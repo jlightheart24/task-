@@ -118,6 +118,27 @@ func TestDeleteTask(t *testing.T) {
 	}
 }
 
+func TestUpdateTaskOrder(t *testing.T) {
+	dbPath := tempDB(t)
+	app, err := New("dev", dbPath)
+	if err != nil {
+		t.Fatalf("new app: %v", err)
+	}
+
+	task, err := app.CreateTask("order me", "")
+	if err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	updated, err := app.UpdateTaskOrder(task.ID, 42)
+	if err != nil {
+		t.Fatalf("update task order: %v", err)
+	}
+	if updated.Order != 42 {
+		t.Fatalf("expected order 42, got %d", updated.Order)
+	}
+}
+
 func tempDB(t *testing.T) string {
 	t.Helper()
 	file, err := os.CreateTemp(t.TempDir(), "taskminus-*.db")

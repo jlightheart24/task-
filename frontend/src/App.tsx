@@ -6,6 +6,7 @@ type Task = {
   status: string;
   created_at?: string;
   due_date?: string;
+  order?: number;
 };
 
 export function App() {
@@ -21,6 +22,23 @@ export function App() {
     return "date";
   });
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<{ taskId: string; dueKey: string } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragUserSelectRef = useRef<string>("");
+
+  const getTaskSortValue = (task: Task) => {
+    if (typeof task.order === "number" && task.order > 0) {
+      return task.order;
+    }
+    if (task.created_at) {
+      const parsed = new Date(task.created_at);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.getTime();
+      }
+    }
+    return 0;
+  };
 
   useEffect(() => {
     const wails = (window as unknown as { go?: any }).go;
@@ -54,8 +72,23 @@ export function App() {
           editorRef.current.focus();
         }
       })
-      .catch(() => setMessage("backend error"));
+        .catch(() => setMessage("backend error"));
   };
+
+  useEffect(() => {
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (typeof task.order === "number" && task.order > 0) {
+          return task;
+        }
+        return {
+          ...task,
+          order: getTaskSortValue(task),
+        };
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem("taskpp.dateHeaderMode", dateHeaderMode);
@@ -102,6 +135,15 @@ export function App() {
         );
       })
       .catch(() => setMessage("backend error"));
+  };
+
+  const updateTaskOrder = (id: string, order: number) => {
+    const wails = (window as unknown as { go?: any }).go;
+    const update = wails?.app?.App?.UpdateTaskOrder;
+    if (typeof update !== "function") {
+      return;
+    }
+    update(id, order).catch(() => setMessage("backend error"));
   };
 
   const isZeroDateString = (value?: string) => {
@@ -202,6 +244,37 @@ export function App() {
     return a.localeCompare(b);
   });
 
+  const reorderWithinDueDate = (dueKey: string, sourceId: string, targetId: string) => {
+    if (sourceId === targetId) {
+      return;
+    }
+    setTasks((prev) => {
+      const grouped = prev.filter((task) => (toDateKey(task.due_date) || "no-due") === dueKey);
+      const others = prev.filter((task) => (toDateKey(task.due_date) || "no-due") !== dueKey);
+
+      const sourceIndex = grouped.findIndex((task) => task.id === sourceId);
+      const targetIndex = grouped.findIndex((task) => task.id === targetId);
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return prev;
+      }
+
+      const reordered = [...grouped];
+      const [moved] = reordered.splice(sourceIndex, 1);
+      reordered.splice(targetIndex, 0, moved);
+
+      const updated = reordered.map((task, index) => {
+        const newOrder = index + 1;
+        if (task.order !== newOrder) {
+          updateTaskOrder(task.id, newOrder);
+          return { ...task, order: newOrder };
+        }
+        return task;
+      });
+
+      return [...others, ...updated];
+    });
+  };
+
   return (
     <div>
       <style>{`
@@ -214,6 +287,17 @@ export function App() {
         .task-item:hover .task-delete {
           opacity: 1;
           visibility: visible;
+        }
+        .task-item {
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .task-item.dragging {
+          opacity: 0.6;
+        }
+        .task-item.drag-over {
+          outline: 2px dashed #bbb;
+          outline-offset: 2px;
         }
       `}</style>
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
@@ -281,8 +365,48 @@ export function App() {
               {formatDateKey(dueKey === "no-due" ? "" : dueKey)}
             </div>
             <ul>
-              {tasksByDueDate[dueKey].map((task) => (
-                <li key={task.id} className="task-item">
+              {[...tasksByDueDate[dueKey]]
+                .sort((a, b) => getTaskSortValue(a) - getTaskSortValue(b))
+                .map((task) => (
+                <li
+                  key={task.id}
+                  className={`task-item${draggingId === task.id ? " dragging" : ""}${dragOverId === task.id ? " drag-over" : ""}`}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData("text/plain", task.id);
+                    event.dataTransfer.effectAllowed = "move";
+                    dragStateRef.current = { taskId: task.id, dueKey };
+                    setDraggingId(task.id);
+                    dragUserSelectRef.current = document.body.style.userSelect || "";
+                    document.body.style.userSelect = "none";
+                  }}
+                  onDragEnd={() => {
+                    dragStateRef.current = null;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                    document.body.style.userSelect = dragUserSelectRef.current;
+                  }}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setDragOverId(task.id);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const dragState = dragStateRef.current;
+                    if (!dragState || dragState.dueKey !== dueKey) {
+                      return;
+                    }
+                    reorderWithinDueDate(dueKey, dragState.taskId, task.id);
+                    dragStateRef.current = null;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                  }}
+                >
                   <div
                     className="task-row"
                     style={{ display: "flex", alignItems: "center", gap: "8px" }}

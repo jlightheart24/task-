@@ -10,6 +10,7 @@ type Task struct {
 	Status      string    `json:"status"`
 	Priority    string    `json:"priority"`
 	DueDate     time.Time `json:"due_date"`
+	Order       int64     `json:"order"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	CompletedAt time.Time `json:"completed_at"`

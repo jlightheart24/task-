@@ -58,6 +58,7 @@ func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 		Title:     title,
 		Status:    "open",
 		DueDate:   parsedDueDate,
+		Order:     now.UnixNano(),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -170,6 +171,45 @@ func (a *App) DeleteTask(id string) error {
 		return fmt.Errorf("delete task: %w", err)
 	}
 	return nil
+}
+
+// UpdateTaskOrder sets the task's order value for manual reordering.
+func (a *App) UpdateTaskOrder(id string, order int64) (domain.Task, error) {
+	var payload []byte
+	err := a.db.Conn().QueryRowContext(
+		context.Background(),
+		`SELECT ciphertext FROM tasks WHERE id = ?`,
+		id,
+	).Scan(&payload)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("get task: %w", err)
+	}
+
+	var task domain.Task
+	if err := json.Unmarshal(payload, &task); err != nil {
+		return domain.Task{}, fmt.Errorf("unmarshal task: %w", err)
+	}
+
+	task.Order = order
+	task.UpdatedAt = time.Now().UTC()
+
+	updatedPayload, err := json.Marshal(task)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("marshal task: %w", err)
+	}
+
+	_, err = a.db.Conn().ExecContext(
+		context.Background(),
+		`UPDATE tasks SET ciphertext = ?, updated_at = ? WHERE id = ?`,
+		updatedPayload,
+		task.UpdatedAt.Unix(),
+		task.ID,
+	)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("update task: %w", err)
+	}
+
+	return task, nil
 }
 
 // UpdateTaskDueDate sets or clears a task's due date.

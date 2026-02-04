@@ -21,3 +21,6 @@
 - You asked to change the delete button to an X that appears on hover; I updated the task row to show a hover-only "×" button.
 - You reported the hover "×" delete button not appearing; I changed the hover target to the full list item and bumped the glyph size.
 - You reported the hover delete "×" still not appearing; I moved its visibility/opacity into CSS and added an explicit color so it shows on hover.
+- You asked to add persistent drag-and-drop reordering; I added an order field to tasks, backend update support, and frontend drag-and-drop within each due-date group.
+- You reported drag-and-drop not reordering and highlighting the drop target; I added proper drag data handling, drop prevention, and hover/drag styling.
+- You reported text highlighting during drag; I disabled text selection during drag and restored it on drag end.

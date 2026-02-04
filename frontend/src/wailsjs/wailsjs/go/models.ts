@@ -7,6 +7,7 @@ export namespace domain {
 	    priority: string;
 	    // Go type: time
 	    due_date: any;
+	    order: number;
 	    // Go type: time
 	    created_at: any;
 	    // Go type: time
@@ -26,6 +27,7 @@ export namespace domain {
 	        this.status = source["status"];
 	        this.priority = source["priority"];
 	        this.due_date = this.convertValues(source["due_date"], null);
+	        this.order = source["order"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.updated_at = this.convertValues(source["updated_at"], null);
 	        this.completed_at = this.convertValues(source["completed_at"], null);
