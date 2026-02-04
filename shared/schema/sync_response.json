@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SyncResponse",
+  "type": "object",
+  "required": ["accepted", "conflicts"],
+  "properties": {
+    "accepted": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["task_id", "local_event_id", "remote_event_id"],
+        "properties": {
+          "task_id": {"type": "string"},
+          "local_event_id": {"type": "string"},
+          "remote_event_id": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

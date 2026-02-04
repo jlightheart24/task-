@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskEvent",
+  "type": "object",
+  "required": ["event_id", "task_id", "op", "timestamp", "device_id", "ciphertext"],
+  "properties": {
+    "event_id": {"type": "string"},
+    "task_id": {"type": "string"},
+    "op": {"type": "string", "enum": ["create", "update", "delete"]},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "device_id": {"type": "string"},
+    "ciphertext": {"type": "string", "contentEncoding": "base64"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SyncRequest",
+  "type": "object",
+  "required": ["device_id", "events"],
+  "properties": {
+    "device_id": {"type": "string"},
+    "events": {
+      "type": "array",
+      "items": {"$ref": "task_event.json"}
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task",
+  "type": "object",
+  "required": ["id", "title", "status", "priority", "created_at", "updated_at"],
+  "properties": {
+    "id": {"type": "string"},
+    "title": {"type": "string"},
+    "status": {"type": "string", "enum": ["open", "done"]},
+    "priority": {"type": "string"},
+    "due_date": {"type": "string", "format": "date-time"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "recurrence": {"type": "string", "enum": ["daily", "eod", "none"]},
+    "archived": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}
