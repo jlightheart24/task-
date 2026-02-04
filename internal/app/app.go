@@ -56,6 +56,7 @@ func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 	task := domain.Task{
 		ID:        uuid.NewString(),
 		Title:     title,
+		Description: "",
 		Status:    "open",
 		DueDate:   parsedDueDate,
 		Order:     now.UnixNano(),
@@ -191,6 +192,52 @@ func (a *App) UpdateTaskOrder(id string, order int64) (domain.Task, error) {
 	}
 
 	task.Order = order
+	task.UpdatedAt = time.Now().UTC()
+
+	updatedPayload, err := json.Marshal(task)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("marshal task: %w", err)
+	}
+
+	_, err = a.db.Conn().ExecContext(
+		context.Background(),
+		`UPDATE tasks SET ciphertext = ?, updated_at = ? WHERE id = ?`,
+		updatedPayload,
+		task.UpdatedAt.Unix(),
+		task.ID,
+	)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("update task: %w", err)
+	}
+
+	return task, nil
+}
+
+// UpdateTaskDetails updates description, due date, and priority.
+func (a *App) UpdateTaskDetails(id string, description string, dueDate string, priority string) (domain.Task, error) {
+	var payload []byte
+	err := a.db.Conn().QueryRowContext(
+		context.Background(),
+		`SELECT ciphertext FROM tasks WHERE id = ?`,
+		id,
+	).Scan(&payload)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("get task: %w", err)
+	}
+
+	var task domain.Task
+	if err := json.Unmarshal(payload, &task); err != nil {
+		return domain.Task{}, fmt.Errorf("unmarshal task: %w", err)
+	}
+
+	parsedDueDate, err := parseDueDate(dueDate)
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	task.Description = description
+	task.DueDate = parsedDueDate
+	task.Priority = priority
 	task.UpdatedAt = time.Now().UTC()
 
 	updatedPayload, err := json.Marshal(task)

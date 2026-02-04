@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 type Task = {
   id: string;
   title: string;
+  description?: string;
   status: string;
+  priority?: string;
   created_at?: string;
   due_date?: string;
   order?: number;
@@ -31,6 +33,10 @@ export function App() {
     position: "above" | "below";
   } | null>(null);
   const dragUserSelectRef = useRef<string>("");
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [detailsDraft, setDetailsDraft] = useState<string>("");
+  const [priorityDraft, setPriorityDraft] = useState<string>("normal");
+  const [dueDateDraft, setDueDateDraft] = useState<string>("");
 
   const getTaskSortValue = (task: Task) => {
     if (typeof task.order === "number" && task.order > 0) {
@@ -99,6 +105,16 @@ export function App() {
     window.localStorage.setItem("taskpp.dateHeaderMode", dateHeaderMode);
   }, [dateHeaderMode]);
 
+  useEffect(() => {
+    const task = tasks.find((item) => item.id === activeTaskId);
+    if (!task) {
+      return;
+    }
+    setDetailsDraft(task.description || "");
+    setPriorityDraft(task.priority || "normal");
+    setDueDateDraft(formatInputDate(task.due_date));
+  }, [activeTaskId, tasks]);
+
   const toggleTask = (id: string) => {
     const wails = (window as unknown as { go?: any }).go;
     const toggle = wails?.app?.App?.ToggleTaskComplete;
@@ -149,6 +165,21 @@ export function App() {
       return;
     }
     update(id, order).catch(() => setMessage("backend error"));
+  };
+
+  const updateTaskDetails = (id: string, description: string, dueDate: string, priority: string) => {
+    const wails = (window as unknown as { go?: any }).go;
+    const update = wails?.app?.App?.UpdateTaskDetails;
+    if (typeof update !== "function") {
+      return;
+    }
+    update(id, description, dueDate, priority)
+      .then((updated: Task) => {
+        setTasks((prev) =>
+          prev.map((task) => (task.id === updated.id ? updated : task))
+        );
+      })
+      .catch(() => setMessage("backend error"));
   };
 
   const isZeroDateString = (value?: string) => {
@@ -390,6 +421,28 @@ export function App() {
           top: 4px;
           border-top: 2px solid #666;
         }
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+        }
+        .modal {
+          background: #fff;
+          width: min(520px, 92vw);
+          border-radius: 8px;
+          padding: 16px;
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+        }
+        .modal-actions {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
+          margin-top: 12px;
+        }
       `}</style>
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
         <button
@@ -602,6 +655,7 @@ export function App() {
                   <div
                     className="task-row"
                     style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                    onClick={() => setActiveTaskId(task.id)}
                   >
                     <label style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}>
                       <input
@@ -678,6 +732,62 @@ export function App() {
           />
         </div>
       </div>
+      ) : null}
+      {activeTaskId ? (
+        <div className="modal-backdrop" onClick={() => setActiveTaskId(null)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+              Task details
+            </div>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Details
+              <textarea
+                value={detailsDraft}
+                onChange={(event) => setDetailsDraft(event.target.value)}
+                rows={4}
+                style={{ width: "100%", marginTop: "6px" }}
+              />
+            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Due date
+              <input
+                type="date"
+                value={dueDateDraft}
+                onChange={(event) => setDueDateDraft(event.target.value)}
+                style={{ display: "block", marginTop: "6px" }}
+              />
+            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Priority
+              <select
+                value={priorityDraft}
+                onChange={(event) => setPriorityDraft(event.target.value)}
+                style={{ display: "block", marginTop: "6px" }}
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <div className="modal-actions">
+              <button type="button" onClick={() => setActiveTaskId(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!activeTaskId) {
+                    return;
+                  }
+                  updateTaskDetails(activeTaskId, detailsDraft, dueDateDraft, priorityDraft);
+                  setActiveTaskId(null);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

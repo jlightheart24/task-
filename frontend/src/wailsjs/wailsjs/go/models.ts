@@ -3,6 +3,7 @@ export namespace domain {
 	export class Task {
 	    id: string;
 	    title: string;
+	    description: string;
 	    status: string;
 	    priority: string;
 	    // Go type: time
@@ -24,6 +25,7 @@ export namespace domain {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.title = source["title"];
+	        this.description = source["description"];
 	        this.status = source["status"];
 	        this.priority = source["priority"];
 	        this.due_date = this.convertValues(source["due_date"], null);

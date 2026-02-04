@@ -31,3 +31,6 @@
 - You reported same-day drags moving tasks to the previous day; I split same-day reordering from cross-day moves to prevent due date changes on reorder.
 - You reported cross-day drops landing on the previous day; I normalized due-date handling to treat due dates as date-only strings and avoid timezone shifts.
 - You asked to hide the drop line above the top date; I removed the top drop zone for the first day section.
+- You asked for a task details modal with editable details, due date, and priority; I added description to tasks, a backend update method, and a frontend modal for editing.
+- You asked to add frontend tests; I added Vitest + Testing Library setup and tests for the task details modal and date header mode.
+- You asked to ignore node_modules; I added `package-lock.json` to `.gitignore`, removed tracked `frontend/node_modules/`, and deleted the root `package-lock.json`.

@@ -139,6 +139,33 @@ func TestUpdateTaskOrder(t *testing.T) {
 	}
 }
 
+func TestUpdateTaskDetails(t *testing.T) {
+	dbPath := tempDB(t)
+	app, err := New("dev", dbPath)
+	if err != nil {
+		t.Fatalf("new app: %v", err)
+	}
+
+	task, err := app.CreateTask("details", "")
+	if err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	updated, err := app.UpdateTaskDetails(task.ID, "notes", "2026-02-10", "high")
+	if err != nil {
+		t.Fatalf("update task details: %v", err)
+	}
+	if updated.Description != "notes" {
+		t.Fatalf("expected description updated, got %q", updated.Description)
+	}
+	if updated.Priority != "high" {
+		t.Fatalf("expected priority high, got %q", updated.Priority)
+	}
+	if updated.DueDate.IsZero() {
+		t.Fatalf("expected due date set")
+	}
+}
+
 func tempDB(t *testing.T) string {
 	t.Helper()
 	file, err := os.CreateTemp(t.TempDir(), "taskminus-*.db")
