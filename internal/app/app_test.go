@@ -35,7 +35,7 @@ func TestCreateAndListTasks(t *testing.T) {
 		t.Fatalf("new app: %v", err)
 	}
 
-	task, err := app.CreateTask("first")
+	task, err := app.CreateTask("first", "")
 	if err != nil {
 		t.Fatalf("create task: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestToggleTaskComplete(t *testing.T) {
 		t.Fatalf("new app: %v", err)
 	}
 
-	task, err := app.CreateTask("toggle me")
+	task, err := app.CreateTask("toggle me", "")
 	if err != nil {
 		t.Fatalf("create task: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestDeleteTask(t *testing.T) {
 		t.Fatalf("new app: %v", err)
 	}
 
-	task, err := app.CreateTask("delete me")
+	task, err := app.CreateTask("delete me", "")
 	if err != nil {
 		t.Fatalf("create task: %v", err)
 	}

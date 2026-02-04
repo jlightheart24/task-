@@ -44,12 +44,17 @@ func (a *App) Greet(name string) string {
 }
 
 // CreateTask adds a new task to the local database.
-func (a *App) CreateTask(title string) (domain.Task, error) {
+func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 	now := time.Now().UTC()
+	parsedDueDate, err := parseDueDate(dueDate)
+	if err != nil {
+		return domain.Task{}, err
+	}
 	task := domain.Task{
 		ID:        uuid.NewString(),
 		Title:     title,
 		Status:    "open",
+		DueDate:   parsedDueDate,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -162,4 +167,59 @@ func (a *App) DeleteTask(id string) error {
 		return fmt.Errorf("delete task: %w", err)
 	}
 	return nil
+}
+
+// UpdateTaskDueDate sets or clears a task's due date.
+func (a *App) UpdateTaskDueDate(id string, dueDate string) (domain.Task, error) {
+	var payload []byte
+	err := a.db.Conn().QueryRowContext(
+		context.Background(),
+		`SELECT ciphertext FROM tasks WHERE id = ?`,
+		id,
+	).Scan(&payload)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("get task: %w", err)
+	}
+
+	var task domain.Task
+	if err := json.Unmarshal(payload, &task); err != nil {
+		return domain.Task{}, fmt.Errorf("unmarshal task: %w", err)
+	}
+
+	parsedDueDate, err := parseDueDate(dueDate)
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	task.DueDate = parsedDueDate
+	task.UpdatedAt = time.Now().UTC()
+
+	updatedPayload, err := json.Marshal(task)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("marshal task: %w", err)
+	}
+
+	_, err = a.db.Conn().ExecContext(
+		context.Background(),
+		`UPDATE tasks SET ciphertext = ?, updated_at = ? WHERE id = ?`,
+		updatedPayload,
+		task.UpdatedAt.Unix(),
+		task.ID,
+	)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("update task: %w", err)
+	}
+
+	return task, nil
+}
+
+func parseDueDate(dueDate string) (time.Time, error) {
+	if dueDate == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.ParseInLocation("2006-01-02", dueDate, time.Local)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid due date: %w", err)
+	}
+	return parsed.UTC(), nil
 }
