@@ -184,8 +184,6 @@ export function App() {
 
   return (
     <div>
-      <h1>task-</h1>
-      <p>{message}</p>
       <div
         onClick={() => editorRef.current?.focus()}
         style={{ cursor: "text", padding: "8px 0" }}
@@ -206,7 +204,7 @@ export function App() {
                         checked={task.status === "done"}
                         onChange={() => toggleTask(task.id)}
                       />
-                      {task.title} ({task.status})
+                      {task.title}
                     </label>
                     <button type="button" onClick={() => deleteTask(task.id)}>
                       delete

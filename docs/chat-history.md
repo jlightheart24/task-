@@ -15,3 +15,4 @@
 - You reported due dates defaulting to 12/31/1; I treated zero/0001 dates as empty so they fall into No due date and don't display.
 - You asked for new tasks to default due date to today; I set CreateTask to use today when no due date is provided.
 - You reported tasks sorting into the previous date; I switched due-date grouping and inputs to use local date parts instead of UTC.
+- You asked to remove the title and greeting text from the task view and remove status labels from task rows; I removed those UI elements.
