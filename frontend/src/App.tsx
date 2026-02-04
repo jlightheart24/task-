@@ -204,6 +204,11 @@ export function App() {
 
   return (
     <div>
+      <style>{`
+        .task-row:hover .task-delete {
+          opacity: 1;
+        }
+      `}</style>
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
         <button
           type="button"
@@ -271,7 +276,10 @@ export function App() {
             <ul>
               {tasksByDueDate[dueKey].map((task) => (
                 <li key={task.id}>
-                  <div>
+                  <div
+                    className="task-row"
+                    style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  >
                     <label style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}>
                       <input
                         type="checkbox"
@@ -280,8 +288,21 @@ export function App() {
                       />
                       {task.title}
                     </label>
-                    <button type="button" onClick={() => deleteTask(task.id)}>
-                      delete
+                    <button
+                      type="button"
+                      onClick={() => deleteTask(task.id)}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        opacity: 0,
+                        transition: "opacity 0.12s ease",
+                      }}
+                      aria-label="Delete task"
+                      title="Delete task"
+                      className="task-delete"
+                    >
+                      ×
                     </button>
                   </div>
                   <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>

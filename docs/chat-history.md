@@ -18,3 +18,4 @@
 - You asked to remove the title and greeting text from the task view and remove status labels from task rows; I removed those UI elements.
 - You asked for a Settings tab with a toggle for date headers; I added a Settings tab and a date header mode (date vs weekday) with localStorage persistence.
 - You asked to add a date header mode that shows both weekday and date; I added a "Show both" option.
+- You asked to change the delete button to an X that appears on hover; I updated the task row to show a hover-only "×" button.
