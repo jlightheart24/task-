@@ -46,3 +46,7 @@
 - You asked for a month view in the calendar; I added a month grid view with week/month toggles and month navigation.
 - You asked to separate the week/month toggle from the navigation row; I split them into two rows.
 - You asked to keep empty calendar days blank; I removed the "No tasks" placeholder.
+- You asked to show the month at the top of the month view; I added a month/year header above the calendar.
+- You asked to center the month header; I centered the month/year label above the calendar.
+- You asked to move the month header below the view tabs and left align it; I repositioned it under the Week/Month buttons.
+- You asked to place the month header below the nav controls and center it; I moved and centered the month/year label.

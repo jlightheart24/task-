@@ -721,6 +721,11 @@ export function App() {
               Next
             </button>
           </div>
+          {calendarView === "month" ? (
+            <div style={{ fontWeight: 600, marginBottom: "8px", textAlign: "center" }}>
+              {monthBase.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+            </div>
+          ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px" }}>
           {(calendarView === "week" ? weekDates : monthGridDates).map((date) => {
             const dateKey = dateToKeyLocal(date);
