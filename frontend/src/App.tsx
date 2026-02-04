@@ -12,6 +12,14 @@ export function App() {
   const [message, setMessage] = useState<string>("backend not connected");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"tasks" | "settings">("tasks");
+  const [dateHeaderMode, setDateHeaderMode] = useState<"date" | "weekday">(() => {
+    const stored = window.localStorage.getItem("taskpp.dateHeaderMode");
+    if (stored === "weekday" || stored === "date") {
+      return stored;
+    }
+    return "date";
+  });
   const editorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -48,6 +56,10 @@ export function App() {
       })
       .catch(() => setMessage("backend error"));
   };
+
+  useEffect(() => {
+    window.localStorage.setItem("taskpp.dateHeaderMode", dateHeaderMode);
+  }, [dateHeaderMode]);
 
   const toggleTask = (id: string) => {
     const wails = (window as unknown as { go?: any }).go;
@@ -164,6 +176,9 @@ export function App() {
     if (Number.isNaN(date.getTime())) {
       return "No due date";
     }
+    if (dateHeaderMode === "weekday") {
+      return date.toLocaleDateString(undefined, { weekday: "long" });
+    }
     return date.toLocaleDateString();
   };
 
@@ -184,6 +199,50 @@ export function App() {
 
   return (
     <div>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("tasks")}
+          style={{ fontWeight: activeTab === "tasks" ? 600 : 400 }}
+        >
+          Tasks
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("settings")}
+          style={{ fontWeight: activeTab === "settings" ? 600 : 400 }}
+        >
+          Settings
+        </button>
+      </div>
+      {activeTab === "settings" ? (
+        <div>
+          <div style={{ marginBottom: "8px", fontWeight: 600 }}>
+            Date Display
+          </div>
+          <label style={{ marginRight: "12px" }}>
+            <input
+              type="radio"
+              name="dateHeaderMode"
+              value="date"
+              checked={dateHeaderMode === "date"}
+              onChange={() => setDateHeaderMode("date")}
+            />
+            <span style={{ marginLeft: "6px" }}>Show date</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="dateHeaderMode"
+              value="weekday"
+              checked={dateHeaderMode === "weekday"}
+              onChange={() => setDateHeaderMode("weekday")}
+            />
+            <span style={{ marginLeft: "6px" }}>Show weekday</span>
+          </label>
+        </div>
+      ) : null}
+      {activeTab === "tasks" ? (
       <div
         onClick={() => editorRef.current?.focus()}
         style={{ cursor: "text", padding: "8px 0" }}
@@ -260,6 +319,7 @@ export function App() {
           />
         </div>
       </div>
+      ) : null}
     </div>
   );
 }
