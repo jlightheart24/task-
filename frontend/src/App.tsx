@@ -52,6 +52,8 @@ export function App() {
   const [priorityDraft, setPriorityDraft] = useState<string>("normal");
   const [dueDateDraft, setDueDateDraft] = useState<string>("");
   const [weekOffset, setWeekOffset] = useState<number>(0);
+  const [calendarView, setCalendarView] = useState<"week" | "month">("week");
+  const [monthOffset, setMonthOffset] = useState<number>(0);
 
   const getTaskSortValue = (task: Task) => {
     if (typeof task.order === "number" && task.order > 0) {
@@ -316,6 +318,40 @@ export function App() {
       next.setDate(start.getDate() + index);
       return next;
     });
+  })();
+
+  const startOfMonth = (date: Date) => {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  };
+
+  const daysInMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+  const monthGridDates = (() => {
+    const base = new Date();
+    base.setMonth(base.getMonth() + monthOffset);
+    const start = startOfMonth(base);
+    const offsetDay = start.getDay(); // 0 = Sun
+    const startOffset =
+      weekStartDay === "monday"
+        ? (offsetDay + 6) % 7
+        : offsetDay;
+    const firstCell = new Date(start);
+    firstCell.setDate(start.getDate() - startOffset);
+    const totalCells = 42; // 6 weeks
+    return Array.from({ length: totalCells }, (_, index) => {
+      const next = new Date(firstCell);
+      next.setDate(firstCell.getDate() + index);
+      return next;
+    });
+  })();
+
+  const monthBase = (() => {
+    const base = new Date();
+    base.setMonth(base.getMonth() + monthOffset);
+    return base;
   })();
 
   const tasksByDateKey = tasks.reduce<Record<string, Task[]>>((acc, task) => {
@@ -635,29 +671,80 @@ export function App() {
       ) : null}
       {activeTab === "calendar" ? (
         <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+            <button
+              type="button"
+              onClick={() => setCalendarView("week")}
+              style={{ fontWeight: calendarView === "week" ? 600 : 400 }}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalendarView("month")}
+              style={{ fontWeight: calendarView === "month" ? 600 : 400 }}
+            >
+              Month
+            </button>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-            <button type="button" onClick={() => setWeekOffset((prev) => prev - 1)}>
+            <button
+              type="button"
+              onClick={() =>
+                calendarView === "week"
+                  ? setWeekOffset((prev) => prev - 1)
+                  : setMonthOffset((prev) => prev - 1)
+              }
+            >
               Prev
             </button>
-            <button type="button" onClick={() => setWeekOffset(0)}>
+            <button
+              type="button"
+              onClick={() => {
+                if (calendarView === "week") {
+                  setWeekOffset(0);
+                } else {
+                  setMonthOffset(0);
+                }
+              }}
+            >
               Today
             </button>
-            <button type="button" onClick={() => setWeekOffset((prev) => prev + 1)}>
+            <button
+              type="button"
+              onClick={() =>
+                calendarView === "week"
+                  ? setWeekOffset((prev) => prev + 1)
+                  : setMonthOffset((prev) => prev + 1)
+              }
+            >
               Next
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px" }}>
-          {weekDates.map((date) => {
+          {(calendarView === "week" ? weekDates : monthGridDates).map((date) => {
             const dateKey = dateToKeyLocal(date);
             const dayTasks = tasksByDateKey[dateKey] || [];
+            const inMonth =
+              calendarView === "week" ||
+              (date.getMonth() === monthBase.getMonth() &&
+                date.getFullYear() === monthBase.getFullYear());
             return (
-              <div key={dateKey} style={{ border: "1px solid #ddd", borderRadius: "6px", padding: "8px" }}>
+              <div
+                key={`${calendarView}-${dateKey}`}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "6px",
+                  padding: "8px",
+                  opacity: inMonth ? 1 : 0.5,
+                }}
+              >
                 <div style={{ fontWeight: 600, marginBottom: "6px" }}>
-                  {formatWeekdayShort(date)} {formatMonthDay(date)}
+                  {calendarView === "week"
+                    ? `${formatWeekdayShort(date)} ${formatMonthDay(date)}`
+                    : `${formatWeekdayShort(date)} ${date.getDate()}`}
                 </div>
-                {dayTasks.length === 0 ? (
-                  <div style={{ color: "#888", fontSize: "0.85rem" }}>No tasks</div>
-                ) : (
+                {dayTasks.length === 0 ? null : (
                   <ul>
                     {dayTasks
                       .sort((a, b) => getTaskSortValue(a) - getTaskSortValue(b))

@@ -43,3 +43,6 @@
 - You asked to set the week start day; I added a Settings option for Sunday/Monday and wired the calendar to respect it.
 - You asked to list Sunday before Monday in settings; I reordered the week start radio buttons.
 - You asked for date format choice (MDY vs DMY); I added a Settings toggle and applied it to date rendering in headers, calendar, and details.
+- You asked for a month view in the calendar; I added a month grid view with week/month toggles and month navigation.
+- You asked to separate the week/month toggle from the navigation row; I split them into two rows.
+- You asked to keep empty calendar days blank; I removed the "No tasks" placeholder.
