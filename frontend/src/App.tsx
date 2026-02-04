@@ -655,16 +655,33 @@ export function App() {
                   <div
                     className="task-row"
                     style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    onClick={() => setActiveTaskId(task.id)}
                   >
-                    <label style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}>
+                    <label
+                      style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={task.status === "done"}
                         onChange={() => toggleTask(task.id)}
+                        onClick={(event) => event.stopPropagation()}
                       />
-                      {task.title}
                     </label>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTaskId(task.id)}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        cursor: "pointer",
+                        textAlign: "left",
+                        font: "inherit",
+                        textDecoration: task.status === "done" ? "line-through" : "none",
+                      }}
+                    >
+                      {task.title}
+                    </button>
                     <button
                       type="button"
                       onClick={() => deleteTask(task.id)}
@@ -681,18 +698,6 @@ export function App() {
                     >
                       ×
                     </button>
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
-                    <span>Created: {formatDate(task.created_at) || "unknown"}</span>
-                    <label style={{ marginLeft: "12px" }}>
-                      Due:
-                      <input
-                        type="date"
-                        value={formatInputDate(task.due_date)}
-                        onChange={(event) => setDueDate(task.id, event.target.value)}
-                        style={{ marginLeft: "6px" }}
-                      />
-                    </label>
                   </div>
                 </li>
               ))}
@@ -757,6 +762,9 @@ export function App() {
                 style={{ display: "block", marginTop: "6px" }}
               />
             </label>
+            <div style={{ marginBottom: "8px", color: "#666" }}>
+              Created on: {formatDate(tasks.find((task) => task.id === activeTaskId)?.created_at) || "unknown"}
+            </div>
             <label style={{ display: "block", marginBottom: "8px" }}>
               Priority
               <select

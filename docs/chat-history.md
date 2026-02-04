@@ -34,3 +34,7 @@
 - You asked for a task details modal with editable details, due date, and priority; I added description to tasks, a backend update method, and a frontend modal for editing.
 - You asked to add frontend tests; I added Vitest + Testing Library setup and tests for the task details modal and date header mode.
 - You asked to ignore node_modules; I added `package-lock.json` to `.gitignore`, removed tracked `frontend/node_modules/`, and deleted the root `package-lock.json`.
+- You reported clicking a task opens details and also completes it; I stopped label/checkbox clicks from propagating and made only the title open the modal.
+- You reported clicking a task title still toggled completion; I moved the title out of the label and made it a separate button to open details.
+- You wanted completed tasks to keep a strikethrough; I applied the line-through style to the task title button.
+- You asked to move Created on into the details modal and remove created/due date from below tasks; I moved created date into the modal and removed the inline metadata.
