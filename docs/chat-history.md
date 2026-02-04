@@ -38,3 +38,8 @@
 - You reported clicking a task title still toggled completion; I moved the title out of the label and made it a separate button to open details.
 - You wanted completed tasks to keep a strikethrough; I applied the line-through style to the task title button.
 - You asked to move Created on into the details modal and remove created/due date from below tasks; I moved created date into the modal and removed the inline metadata.
+- You asked for a calendar tab; I added a weekly calendar view that lists tasks on their due date.
+- You asked to switch between weeks in the calendar; I added prev/today/next controls and a week offset.
+- You asked to set the week start day; I added a Settings option for Sunday/Monday and wired the calendar to respect it.
+- You asked to list Sunday before Monday in settings; I reordered the week start radio buttons.
+- You asked for date format choice (MDY vs DMY); I added a Settings toggle and applied it to date rendering in headers, calendar, and details.

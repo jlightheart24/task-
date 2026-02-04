@@ -15,13 +15,27 @@ export function App() {
   const [message, setMessage] = useState<string>("backend not connected");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"tasks" | "settings">("tasks");
+  const [activeTab, setActiveTab] = useState<"tasks" | "settings" | "calendar">("tasks");
   const [dateHeaderMode, setDateHeaderMode] = useState<"date" | "weekday" | "both">(() => {
     const stored = window.localStorage.getItem("taskpp.dateHeaderMode");
     if (stored === "weekday" || stored === "date" || stored === "both") {
       return stored;
     }
     return "date";
+  });
+  const [weekStartDay, setWeekStartDay] = useState<"sunday" | "monday">(() => {
+    const stored = window.localStorage.getItem("taskpp.weekStartDay");
+    if (stored === "sunday" || stored === "monday") {
+      return stored;
+    }
+    return "monday";
+  });
+  const [dateFormat, setDateFormat] = useState<"mdy" | "dmy">(() => {
+    const stored = window.localStorage.getItem("taskpp.dateFormat");
+    if (stored === "mdy" || stored === "dmy") {
+      return stored;
+    }
+    return "mdy";
   });
   const editorRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ taskId: string; dueKey: string } | null>(null);
@@ -37,6 +51,7 @@ export function App() {
   const [detailsDraft, setDetailsDraft] = useState<string>("");
   const [priorityDraft, setPriorityDraft] = useState<string>("normal");
   const [dueDateDraft, setDueDateDraft] = useState<string>("");
+  const [weekOffset, setWeekOffset] = useState<number>(0);
 
   const getTaskSortValue = (task: Task) => {
     if (typeof task.order === "number" && task.order > 0) {
@@ -104,6 +119,14 @@ export function App() {
   useEffect(() => {
     window.localStorage.setItem("taskpp.dateHeaderMode", dateHeaderMode);
   }, [dateHeaderMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem("taskpp.weekStartDay", weekStartDay);
+  }, [weekStartDay]);
+
+  useEffect(() => {
+    window.localStorage.setItem("taskpp.dateFormat", dateFormat);
+  }, [dateFormat]);
 
   useEffect(() => {
     const task = tasks.find((item) => item.id === activeTaskId);
@@ -203,6 +226,15 @@ export function App() {
     return "";
   };
 
+  const formatDateParts = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear());
+    return dateFormat === "dmy"
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+  };
+
   const formatDate = (value?: string) => {
     if (!value) {
       return "";
@@ -217,7 +249,7 @@ export function App() {
     if (date.getUTCFullYear() <= 1) {
       return "";
     }
-    return date.toLocaleDateString();
+    return formatDateParts(date);
   };
 
   const formatInputDate = (value?: string) => {
@@ -241,11 +273,62 @@ export function App() {
     }
     if (dateHeaderMode === "both") {
       const weekday = date.toLocaleDateString(undefined, { weekday: "long" });
-      const fullDate = date.toLocaleDateString();
+      const fullDate = formatDateParts(date);
       return `${weekday} · ${fullDate}`;
     }
-    return date.toLocaleDateString();
+    return formatDateParts(date);
   };
+
+  const formatWeekdayShort = (date: Date) =>
+    date.toLocaleDateString(undefined, { weekday: "short" });
+
+  const formatMonthDay = (date: Date) => {
+    const day = String(date.getDate());
+    const monthName = date.toLocaleDateString(undefined, { month: "short" });
+    return dateFormat === "dmy" ? `${day} ${monthName}` : `${monthName} ${day}`;
+  };
+
+  const dateToKeyLocal = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const startOfWeek = (date: Date) => {
+    const day = date.getDay(); // 0 = Sun
+    const diff =
+      weekStartDay === "monday"
+        ? (day + 6) % 7
+        : day;
+    const start = new Date(date);
+    start.setDate(date.getDate() - diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  };
+
+  const weekDates = (() => {
+    const base = new Date();
+    base.setDate(base.getDate() + weekOffset * 7);
+    const start = startOfWeek(base);
+    return Array.from({ length: 7 }, (_, index) => {
+      const next = new Date(start);
+      next.setDate(start.getDate() + index);
+      return next;
+    });
+  })();
+
+  const tasksByDateKey = tasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const key = toDateKey(task.due_date);
+    if (!key) {
+      return acc;
+    }
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(task);
+    return acc;
+  }, {});
 
   const tasksByDueDate = tasks.reduce<Record<string, Task[]>>((acc, task) => {
     const key = toDateKey(task.due_date) || "no-due";
@@ -454,6 +537,13 @@ export function App() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab("calendar")}
+          style={{ fontWeight: activeTab === "calendar" ? 600 : 400 }}
+        >
+          Calendar
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab("settings")}
           style={{ fontWeight: activeTab === "settings" ? 600 : 400 }}
         >
@@ -495,6 +585,107 @@ export function App() {
             />
             <span style={{ marginLeft: "6px" }}>Show both</span>
           </label>
+          <div style={{ marginTop: "16px", marginBottom: "8px", fontWeight: 600 }}>
+            Week Starts On
+          </div>
+          <label style={{ marginRight: "12px" }}>
+            <input
+              type="radio"
+              name="weekStartDay"
+              value="sunday"
+              checked={weekStartDay === "sunday"}
+              onChange={() => setWeekStartDay("sunday")}
+            />
+            <span style={{ marginLeft: "6px" }}>Sunday</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="weekStartDay"
+              value="monday"
+              checked={weekStartDay === "monday"}
+              onChange={() => setWeekStartDay("monday")}
+            />
+            <span style={{ marginLeft: "6px" }}>Monday</span>
+          </label>
+          <div style={{ marginTop: "16px", marginBottom: "8px", fontWeight: 600 }}>
+            Date Format
+          </div>
+          <label style={{ marginRight: "12px" }}>
+            <input
+              type="radio"
+              name="dateFormat"
+              value="mdy"
+              checked={dateFormat === "mdy"}
+              onChange={() => setDateFormat("mdy")}
+            />
+            <span style={{ marginLeft: "6px" }}>Month/Day/Year</span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="dateFormat"
+              value="dmy"
+              checked={dateFormat === "dmy"}
+              onChange={() => setDateFormat("dmy")}
+            />
+            <span style={{ marginLeft: "6px" }}>Day/Month/Year</span>
+          </label>
+        </div>
+      ) : null}
+      {activeTab === "calendar" ? (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+            <button type="button" onClick={() => setWeekOffset((prev) => prev - 1)}>
+              Prev
+            </button>
+            <button type="button" onClick={() => setWeekOffset(0)}>
+              Today
+            </button>
+            <button type="button" onClick={() => setWeekOffset((prev) => prev + 1)}>
+              Next
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px" }}>
+          {weekDates.map((date) => {
+            const dateKey = dateToKeyLocal(date);
+            const dayTasks = tasksByDateKey[dateKey] || [];
+            return (
+              <div key={dateKey} style={{ border: "1px solid #ddd", borderRadius: "6px", padding: "8px" }}>
+                <div style={{ fontWeight: 600, marginBottom: "6px" }}>
+                  {formatWeekdayShort(date)} {formatMonthDay(date)}
+                </div>
+                {dayTasks.length === 0 ? (
+                  <div style={{ color: "#888", fontSize: "0.85rem" }}>No tasks</div>
+                ) : (
+                  <ul>
+                    {dayTasks
+                      .sort((a, b) => getTaskSortValue(a) - getTaskSortValue(b))
+                      .map((task) => (
+                        <li key={task.id} style={{ marginBottom: "4px" }}>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTaskId(task.id)}
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              padding: 0,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              font: "inherit",
+                              textDecoration: task.status === "done" ? "line-through" : "none",
+                            }}
+                          >
+                            {task.title}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+          </div>
         </div>
       ) : null}
       {activeTab === "tasks" ? (
