@@ -92,12 +92,25 @@ export function App() {
       .catch(() => setMessage("backend error"));
   };
 
+  const isZeroDateString = (value?: string) => {
+    if (!value) {
+      return true;
+    }
+    return value.startsWith("0001-01-01");
+  };
+
   const formatDate = (value?: string) => {
     if (!value) {
       return "";
     }
+    if (isZeroDateString(value)) {
+      return "";
+    }
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    if (date.getUTCFullYear() <= 1) {
       return "";
     }
     return date.toLocaleDateString();
@@ -107,15 +120,67 @@ export function App() {
     if (!value) {
       return "";
     }
+    if (isZeroDateString(value)) {
+      return "";
+    }
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
       return "";
     }
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
+    if (date.getFullYear() <= 1) {
+      return "";
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  const toDateKey = (value?: string) => {
+    if (!value) {
+      return "";
+    }
+    if (isZeroDateString(value)) {
+      return "";
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    if (date.getFullYear() <= 1) {
+      return "";
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDateKey = (value: string) => {
+    if (!value) {
+      return "No due date";
+    }
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return "No due date";
+    }
+    return date.toLocaleDateString();
+  };
+
+  const tasksByDueDate = tasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const key = toDateKey(task.due_date) || "no-due";
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(task);
+    return acc;
+  }, {});
+
+  const sortedDueDateKeys = Object.keys(tasksByDueDate).sort((a, b) => {
+    if (a === "no-due") return 1;
+    if (b === "no-due") return -1;
+    return a.localeCompare(b);
+  });
 
   return (
     <div>
@@ -126,33 +191,42 @@ export function App() {
         style={{ cursor: "text", padding: "8px 0" }}
       >
         <ul>
-        {tasks.map((task) => (
-          <li key={task.id}>
-            <div>
-              <label style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}>
-                <input
-                  type="checkbox"
-                  checked={task.status === "done"}
-                  onChange={() => toggleTask(task.id)}
-                />
-                {task.title} ({task.status})
-              </label>
-              <button type="button" onClick={() => deleteTask(task.id)}>
-                delete
-              </button>
+        {sortedDueDateKeys.map((dueKey) => (
+          <li key={dueKey} style={{ listStyle: "none", marginBottom: "12px" }}>
+            <div style={{ fontWeight: 600, marginBottom: "6px" }}>
+              {formatDateKey(dueKey === "no-due" ? "" : dueKey)}
             </div>
-            <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
-              <span>Created: {formatDate(task.created_at) || "unknown"}</span>
-              <label style={{ marginLeft: "12px" }}>
-                Due:
-                <input
-                  type="date"
-                  value={formatInputDate(task.due_date)}
-                  onChange={(event) => setDueDate(task.id, event.target.value)}
-                  style={{ marginLeft: "6px" }}
-                />
-              </label>
-            </div>
+            <ul>
+              {tasksByDueDate[dueKey].map((task) => (
+                <li key={task.id}>
+                  <div>
+                    <label style={{ textDecoration: task.status === "done" ? "line-through" : "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={task.status === "done"}
+                        onChange={() => toggleTask(task.id)}
+                      />
+                      {task.title} ({task.status})
+                    </label>
+                    <button type="button" onClick={() => deleteTask(task.id)}>
+                      delete
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "4px" }}>
+                    <span>Created: {formatDate(task.created_at) || "unknown"}</span>
+                    <label style={{ marginLeft: "12px" }}>
+                      Due:
+                      <input
+                        type="date"
+                        value={formatInputDate(task.due_date)}
+                        onChange={(event) => setDueDate(task.id, event.target.value)}
+                        style={{ marginLeft: "6px" }}
+                      />
+                    </label>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
         </ul>

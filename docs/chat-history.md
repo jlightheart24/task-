@@ -11,3 +11,7 @@
 - You asked whether any of the unexpected files should be in .gitignore.
 - You asked to add recommended entries to `.gitignore`; I added `taskminus.db`, `frontend/node_modules/`, and `frontend/dist/`, and untracked `taskminus.db` and `frontend/dist`.
 - Tests were run with `go test ./...`.
+- You asked to group tasks into different days based on due date; I grouped the task list by due date with a header per day and a No due date bucket.
+- You reported due dates defaulting to 12/31/1; I treated zero/0001 dates as empty so they fall into No due date and don't display.
+- You asked for new tasks to default due date to today; I set CreateTask to use today when no due date is provided.
+- You reported tasks sorting into the previous date; I switched due-date grouping and inputs to use local date parts instead of UTC.

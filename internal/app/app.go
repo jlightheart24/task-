@@ -50,6 +50,9 @@ func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 	if err != nil {
 		return domain.Task{}, err
 	}
+	if parsedDueDate.IsZero() {
+		parsedDueDate = todayDueDate()
+	}
 	task := domain.Task{
 		ID:        uuid.NewString(),
 		Title:     title,
@@ -222,4 +225,11 @@ func parseDueDate(dueDate string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("invalid due date: %w", err)
 	}
 	return parsed.UTC(), nil
+}
+
+func todayDueDate() time.Time {
+	now := time.Now()
+	year, month, day := now.Date()
+	localMidnight := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+	return localMidnight.UTC()
 }
