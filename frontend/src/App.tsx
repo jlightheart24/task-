@@ -205,8 +205,15 @@ export function App() {
   return (
     <div>
       <style>{`
-        .task-row:hover .task-delete {
+        .task-delete {
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.12s ease;
+          color: #333;
+        }
+        .task-item:hover .task-delete {
           opacity: 1;
+          visibility: visible;
         }
       `}</style>
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
@@ -275,7 +282,7 @@ export function App() {
             </div>
             <ul>
               {tasksByDueDate[dueKey].map((task) => (
-                <li key={task.id}>
+                <li key={task.id} className="task-item">
                   <div
                     className="task-row"
                     style={{ display: "flex", alignItems: "center", gap: "8px" }}
@@ -295,8 +302,8 @@ export function App() {
                         border: "none",
                         background: "transparent",
                         cursor: "pointer",
-                        opacity: 0,
-                        transition: "opacity 0.12s ease",
+                        fontSize: "16px",
+                        lineHeight: 1,
                       }}
                       aria-label="Delete task"
                       title="Delete task"

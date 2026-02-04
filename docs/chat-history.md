@@ -19,3 +19,5 @@
 - You asked for a Settings tab with a toggle for date headers; I added a Settings tab and a date header mode (date vs weekday) with localStorage persistence.
 - You asked to add a date header mode that shows both weekday and date; I added a "Show both" option.
 - You asked to change the delete button to an X that appears on hover; I updated the task row to show a hover-only "×" button.
+- You reported the hover "×" delete button not appearing; I changed the hover target to the full list item and bumped the glyph size.
+- You reported the hover delete "×" still not appearing; I moved its visibility/opacity into CSS and added an explicit color so it shows on hover.
