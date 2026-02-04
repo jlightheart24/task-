@@ -25,6 +25,11 @@ export function App() {
   const dragStateRef = useRef<{ taskId: string; dueKey: string } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<"above" | "below" | null>(null);
+  const [dragOverGroup, setDragOverGroup] = useState<{
+    dueKey: string;
+    position: "above" | "below";
+  } | null>(null);
   const dragUserSelectRef = useRef<string>("");
 
   const getTaskSortValue = (task: Task) => {
@@ -153,6 +158,20 @@ export function App() {
     return value.startsWith("0001-01-01");
   };
 
+  const extractDateKey = (value?: string) => {
+    if (!value) {
+      return "";
+    }
+    if (isZeroDateString(value)) {
+      return "";
+    }
+    const trimmed = value.trim();
+    if (trimmed.length >= 10) {
+      return trimmed.slice(0, 10);
+    }
+    return "";
+  };
+
   const formatDate = (value?: string) => {
     if (!value) {
       return "";
@@ -171,43 +190,11 @@ export function App() {
   };
 
   const formatInputDate = (value?: string) => {
-    if (!value) {
-      return "";
-    }
-    if (isZeroDateString(value)) {
-      return "";
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-    if (date.getFullYear() <= 1) {
-      return "";
-    }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return extractDateKey(value);
   };
 
   const toDateKey = (value?: string) => {
-    if (!value) {
-      return "";
-    }
-    if (isZeroDateString(value)) {
-      return "";
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-    if (date.getFullYear() <= 1) {
-      return "";
-    }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return extractDateKey(value);
   };
 
   const formatDateKey = (value: string) => {
@@ -244,7 +231,48 @@ export function App() {
     return a.localeCompare(b);
   });
 
-  const reorderWithinDueDate = (dueKey: string, sourceId: string, targetId: string) => {
+  const reorderGroup = (
+    grouped: Task[],
+    sourceId: string,
+    targetId: string,
+    position: "above" | "below"
+  ) => {
+    const sourceIndex = grouped.findIndex((task) => task.id === sourceId);
+    const targetIndex = grouped.findIndex((task) => task.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return grouped;
+    }
+
+    const reordered = [...grouped];
+    const [moved] = reordered.splice(sourceIndex, 1);
+
+    let insertIndex = targetIndex;
+    if (position === "below") {
+      insertIndex += 1;
+    }
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+    reordered.splice(insertIndex, 0, moved);
+    return reordered;
+  };
+
+  const applyOrderUpdates = (grouped: Task[]) =>
+    grouped.map((task, index) => {
+      const newOrder = index + 1;
+      if (task.order !== newOrder) {
+        updateTaskOrder(task.id, newOrder);
+        return { ...task, order: newOrder };
+      }
+      return task;
+    });
+
+  const reorderWithinDueDate = (
+    dueKey: string,
+    sourceId: string,
+    targetId: string,
+    position: "above" | "below"
+  ) => {
     if (sourceId === targetId) {
       return;
     }
@@ -252,24 +280,63 @@ export function App() {
       const grouped = prev.filter((task) => (toDateKey(task.due_date) || "no-due") === dueKey);
       const others = prev.filter((task) => (toDateKey(task.due_date) || "no-due") !== dueKey);
 
-      const sourceIndex = grouped.findIndex((task) => task.id === sourceId);
-      const targetIndex = grouped.findIndex((task) => task.id === targetId);
-      if (sourceIndex === -1 || targetIndex === -1) {
+      const reordered = reorderGroup(grouped, sourceId, targetId, position);
+      const updated = applyOrderUpdates(reordered);
+      return [...others, ...updated];
+    });
+  };
+
+  const moveTaskToDueDate = (
+    sourceId: string,
+    targetDueKey: string,
+    targetId?: string,
+    position: "above" | "below" = "below"
+  ) => {
+    setTasks((prev) => {
+      const source = prev.find((task) => task.id === sourceId);
+      if (!source) {
         return prev;
       }
 
-      const reordered = [...grouped];
-      const [moved] = reordered.splice(sourceIndex, 1);
-      reordered.splice(targetIndex, 0, moved);
+      const sourceDueKey = toDateKey(source.due_date) || "no-due";
+      const targetDate = targetDueKey === "no-due" ? "" : targetDueKey;
 
-      const updated = reordered.map((task, index) => {
-        const newOrder = index + 1;
-        if (task.order !== newOrder) {
-          updateTaskOrder(task.id, newOrder);
-          return { ...task, order: newOrder };
+      if (sourceDueKey === targetDueKey) {
+        if (targetId) {
+          const grouped = prev.filter(
+            (task) => (toDateKey(task.due_date) || "no-due") === targetDueKey
+          );
+          const others = prev.filter(
+            (task) => (toDateKey(task.due_date) || "no-due") !== targetDueKey
+          );
+          const reordered = reorderGroup(grouped, sourceId, targetId, position);
+          const updated = applyOrderUpdates(reordered);
+          return [...others, ...updated];
         }
-        return task;
-      });
+        return prev;
+      }
+
+      const withUpdatedDue = prev.map((task) =>
+        task.id === sourceId ? { ...task, due_date: targetDate } : task
+      );
+
+      const grouped = withUpdatedDue.filter(
+        (task) => (toDateKey(task.due_date) || "no-due") === targetDueKey
+      );
+      const others = withUpdatedDue.filter(
+        (task) => (toDateKey(task.due_date) || "no-due") !== targetDueKey
+      );
+
+      let reordered = grouped;
+      if (targetId && grouped.some((task) => task.id === targetId)) {
+        reordered = reorderGroup(grouped, sourceId, targetId, position);
+      } else {
+        reordered = [...grouped];
+      }
+
+      const updated = applyOrderUpdates(reordered);
+
+      setDueDate(sourceId, targetDate);
 
       return [...others, ...updated];
     });
@@ -289,15 +356,39 @@ export function App() {
           visibility: visible;
         }
         .task-item {
+          position: relative;
           user-select: none;
           -webkit-user-select: none;
         }
         .task-item.dragging {
           opacity: 0.6;
         }
-        .task-item.drag-over {
-          outline: 2px dashed #bbb;
-          outline-offset: 2px;
+        .task-item.drag-over-above::before,
+        .task-item.drag-over-below::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          border-top: 2px solid #999;
+        }
+        .task-item.drag-over-above::before {
+          top: -4px;
+        }
+        .task-item.drag-over-below::after {
+          bottom: -4px;
+        }
+        .group-drop {
+          position: relative;
+          height: 10px;
+          margin: 4px 0;
+        }
+        .group-drop.active::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 4px;
+          border-top: 2px solid #666;
         }
       `}</style>
       <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
@@ -359,18 +450,106 @@ export function App() {
         style={{ cursor: "text", padding: "8px 0" }}
       >
         <ul>
-        {sortedDueDateKeys.map((dueKey) => (
+        {sortedDueDateKeys.map((dueKey, dueIndex) => {
+          const prevDueKey = dueIndex > 0 ? sortedDueDateKeys[dueIndex - 1] : "";
+          const currentGroup = tasksByDueDate[dueKey];
+          const sortedGroup = [...currentGroup].sort(
+            (a, b) => getTaskSortValue(a) - getTaskSortValue(b)
+          );
+          const firstTaskId = sortedGroup[0]?.id;
+
+          return (
           <li key={dueKey} style={{ listStyle: "none", marginBottom: "12px" }}>
+            {dueIndex > 0 ? (
+              <div
+                className={`group-drop${
+                  dragOverGroup?.dueKey === dueKey && dragOverGroup.position === "above"
+                    ? " active"
+                    : ""
+                }`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setDragOverGroup({ dueKey, position: "above" });
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const dragState = dragStateRef.current;
+                  if (!dragState) {
+                    return;
+                  }
+                  const targetDueKey = prevDueKey || dueKey;
+                  if (firstTaskId) {
+                    moveTaskToDueDate(dragState.taskId, targetDueKey, firstTaskId, "above");
+                  } else {
+                    moveTaskToDueDate(dragState.taskId, targetDueKey);
+                  }
+                  dragStateRef.current = null;
+                  setDraggingId(null);
+                  setDragOverId(null);
+                  setDragOverPosition(null);
+                  setDragOverGroup(null);
+                }}
+              />
+            ) : null}
             <div style={{ fontWeight: 600, marginBottom: "6px" }}>
               {formatDateKey(dueKey === "no-due" ? "" : dueKey)}
             </div>
-            <ul>
-              {[...tasksByDueDate[dueKey]]
-                .sort((a, b) => getTaskSortValue(a) - getTaskSortValue(b))
-                .map((task) => (
+            <div
+              className={`group-drop${
+                dragOverGroup?.dueKey === dueKey && dragOverGroup.position === "below"
+                  ? " active"
+                  : ""
+              }`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverGroup({ dueKey, position: "below" });
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const dragState = dragStateRef.current;
+                if (!dragState) {
+                  return;
+                }
+                if (firstTaskId) {
+                  moveTaskToDueDate(dragState.taskId, dueKey, firstTaskId, "above");
+                } else {
+                  moveTaskToDueDate(dragState.taskId, dueKey);
+                }
+                dragStateRef.current = null;
+                setDraggingId(null);
+                setDragOverId(null);
+                setDragOverPosition(null);
+                setDragOverGroup(null);
+              }}
+            />
+            <ul
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const dragState = dragStateRef.current;
+                if (!dragState) {
+                  return;
+                }
+                moveTaskToDueDate(dragState.taskId, dueKey);
+                dragStateRef.current = null;
+                setDraggingId(null);
+                setDragOverId(null);
+                setDragOverPosition(null);
+                setDragOverGroup(null);
+              }}
+            >
+              {sortedGroup.map((task) => (
                 <li
                   key={task.id}
-                  className={`task-item${draggingId === task.id ? " dragging" : ""}${dragOverId === task.id ? " drag-over" : ""}`}
+                  className={`task-item${draggingId === task.id ? " dragging" : ""}${dragOverId === task.id && dragOverPosition === "above" ? " drag-over-above" : ""}${dragOverId === task.id && dragOverPosition === "below" ? " drag-over-below" : ""}`}
                   draggable
                   onDragStart={(event) => {
                     event.dataTransfer.setData("text/plain", task.id);
@@ -384,6 +563,8 @@ export function App() {
                     dragStateRef.current = null;
                     setDraggingId(null);
                     setDragOverId(null);
+                    setDragOverPosition(null);
+                    setDragOverGroup(null);
                     document.body.style.userSelect = dragUserSelectRef.current;
                   }}
                   onDragEnter={(event) => {
@@ -393,18 +574,29 @@ export function App() {
                   onDragOver={(event) => {
                     event.preventDefault();
                     event.dataTransfer.dropEffect = "move";
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const isAbove = event.clientY < rect.top + rect.height / 2;
+                    setDragOverId(task.id);
+                    setDragOverPosition(isAbove ? "above" : "below");
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     const dragState = dragStateRef.current;
-                    if (!dragState || dragState.dueKey !== dueKey) {
+                    if (!dragState) {
                       return;
                     }
-                    reorderWithinDueDate(dueKey, dragState.taskId, task.id);
+                    const position = dragOverPosition || "below";
+                    if (dragState.dueKey === dueKey) {
+                      reorderWithinDueDate(dueKey, dragState.taskId, task.id, position);
+                    } else {
+                      moveTaskToDueDate(dragState.taskId, dueKey, task.id, position);
+                    }
                     dragStateRef.current = null;
                     setDraggingId(null);
                     setDragOverId(null);
+                    setDragOverPosition(null);
+                    setDragOverGroup(null);
                   }}
                 >
                   <div
@@ -452,7 +644,7 @@ export function App() {
               ))}
             </ul>
           </li>
-        ))}
+        )})}
         </ul>
         <div style={{ position: "relative", minHeight: "28px" }}>
           {draft.trim() === "" ? (

@@ -24,3 +24,10 @@
 - You asked to add persistent drag-and-drop reordering; I added an order field to tasks, backend update support, and frontend drag-and-drop within each due-date group.
 - You reported drag-and-drop not reordering and highlighting the drop target; I added proper drag data handling, drop prevention, and hover/drag styling.
 - You reported text highlighting during drag; I disabled text selection during drag and restored it on drag end.
+- You asked for drag-to-new-day to update due dates; I added cross-day drop handling that updates the due date and reorders within the target day.
+- You asked to drag tasks between days and replace box highlight with an insertion line; I added cross-day drop handling and line indicators above/below the target.
+- You clarified the insertion line should reflect top/bottom hover; I now set drag-over target and position on every dragover event.
+- You asked for day separators as drop zones and for line indicators above/below; I added group-level drop zones above and below each day header and wired them to move tasks to the previous/current day.
+- You reported same-day drags moving tasks to the previous day; I split same-day reordering from cross-day moves to prevent due date changes on reorder.
+- You reported cross-day drops landing on the previous day; I normalized due-date handling to treat due dates as date-only strings and avoid timezone shifts.
+- You asked to hide the drop line above the top date; I removed the top drop zone for the first day section.
