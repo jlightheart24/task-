@@ -13,9 +13,9 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"tasks" | "settings">("tasks");
-  const [dateHeaderMode, setDateHeaderMode] = useState<"date" | "weekday">(() => {
+  const [dateHeaderMode, setDateHeaderMode] = useState<"date" | "weekday" | "both">(() => {
     const stored = window.localStorage.getItem("taskpp.dateHeaderMode");
-    if (stored === "weekday" || stored === "date") {
+    if (stored === "weekday" || stored === "date" || stored === "both") {
       return stored;
     }
     return "date";
@@ -179,6 +179,11 @@ export function App() {
     if (dateHeaderMode === "weekday") {
       return date.toLocaleDateString(undefined, { weekday: "long" });
     }
+    if (dateHeaderMode === "both") {
+      const weekday = date.toLocaleDateString(undefined, { weekday: "long" });
+      const fullDate = date.toLocaleDateString();
+      return `${weekday} · ${fullDate}`;
+    }
     return date.toLocaleDateString();
   };
 
@@ -239,6 +244,16 @@ export function App() {
               onChange={() => setDateHeaderMode("weekday")}
             />
             <span style={{ marginLeft: "6px" }}>Show weekday</span>
+          </label>
+          <label style={{ marginLeft: "12px" }}>
+            <input
+              type="radio"
+              name="dateHeaderMode"
+              value="both"
+              checked={dateHeaderMode === "both"}
+              onChange={() => setDateHeaderMode("both")}
+            />
+            <span style={{ marginLeft: "6px" }}>Show both</span>
           </label>
         </div>
       ) : null}
