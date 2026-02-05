@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"taskpp/core/crypto"
@@ -85,6 +86,15 @@ func (s *Store) migrate(ctx context.Context) error {
 			salt BLOB NOT NULL,
 			kdf TEXT NOT NULL,
 			updated_at TEXT NOT NULL
+		);`,
+		`CREATE TABLE IF NOT EXISTS conflicts (
+			id TEXT PRIMARY KEY,
+			task_id TEXT NOT NULL,
+			local_updated_at TEXT NOT NULL,
+			remote_event_id TEXT NOT NULL,
+			remote_ts TEXT NOT NULL,
+			detected_at TEXT NOT NULL,
+			resolution TEXT NOT NULL
 		);`,
 	}
 
@@ -252,6 +262,10 @@ func (s *Store) AppendEvents(events []model.Event) error {
 			event.Type,
 			event.Payload,
 		); err != nil {
+			// Ignore duplicate events by id.
+			if isUniqueConstraintError(err) {
+				continue
+			}
 			_ = tx.Rollback()
 			return fmt.Errorf("append events exec: %w", err)
 		}
@@ -260,6 +274,21 @@ func (s *Store) AppendEvents(events []model.Event) error {
 		return fmt.Errorf("append events commit: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) HasEvent(id string) (bool, error) {
+	if err := s.Open(); err != nil {
+		return false, err
+	}
+	row := s.db.QueryRow(`SELECT 1 FROM task_events WHERE id = ?`, id)
+	var one int
+	if err := row.Scan(&one); err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("has event: %w", err)
+	}
+	return true, nil
 }
 
 func (s *Store) ListEventsSince(seq int64) ([]model.Event, error) {
@@ -380,6 +409,73 @@ func (s *Store) SaveSyncState(state model.SyncState) error {
 		return fmt.Errorf("save sync state: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) AddConflict(conflict model.Conflict) error {
+	if err := s.Open(); err != nil {
+		return err
+	}
+	stmt := `INSERT INTO conflicts (id, task_id, local_updated_at, remote_event_id, remote_ts, detected_at, resolution)
+	VALUES (?, ?, ?, ?, ?, ?, ?)`
+	if _, err := s.db.Exec(
+		stmt,
+		conflict.ID,
+		conflict.TaskID,
+		formatTime(conflict.LocalUpdatedAt),
+		conflict.RemoteEventID,
+		formatTime(conflict.RemoteTS),
+		formatTime(conflict.DetectedAt),
+		conflict.Resolution,
+	); err != nil {
+		return fmt.Errorf("add conflict: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ListConflicts() ([]model.Conflict, error) {
+	if err := s.Open(); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query(`SELECT id, task_id, local_updated_at, remote_event_id, remote_ts, detected_at, resolution FROM conflicts ORDER BY detected_at ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("list conflicts: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]model.Conflict, 0)
+	for rows.Next() {
+		var conflict model.Conflict
+		var localUpdatedAt, remoteTS, detectedAt string
+		if err := rows.Scan(
+			&conflict.ID,
+			&conflict.TaskID,
+			&localUpdatedAt,
+			&conflict.RemoteEventID,
+			&remoteTS,
+			&detectedAt,
+			&conflict.Resolution,
+		); err != nil {
+			return nil, fmt.Errorf("list conflicts scan: %w", err)
+		}
+		var err error
+		conflict.LocalUpdatedAt, err = parseTime(localUpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse local_updated_at: %w", err)
+		}
+		conflict.RemoteTS, err = parseTime(remoteTS)
+		if err != nil {
+			return nil, fmt.Errorf("parse remote_ts: %w", err)
+		}
+		conflict.DetectedAt, err = parseTime(detectedAt)
+		if err != nil {
+			return nil, fmt.Errorf("parse detected_at: %w", err)
+		}
+		out = append(out, conflict)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list conflicts rows: %w", err)
+	}
+	return out, nil
 }
 
 func formatTime(t time.Time) string {
@@ -582,4 +678,11 @@ func (s *Store) hasColumn(ctx context.Context, tableName, columnName string) (bo
 		return false, fmt.Errorf("pragma rows: %w", err)
 	}
 	return false, nil
+}
+
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique constraint")
 }

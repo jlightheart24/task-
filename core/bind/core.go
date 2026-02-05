@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"taskpp/core/logic"
 	"taskpp/core/storage"
 	"taskpp/core/storage/sqlite"
+	"taskpp/core/sync"
 )
 
 // Core is the bind-safe facade exposed to UIs.
@@ -363,6 +365,9 @@ func (c *Core) ImportEvents(eventsJSON string) string {
 	if c.store == nil {
 		return errorJSON("storage not initialized")
 	}
+	if c.keys == nil || !c.keys.IsUnlocked() {
+		return errorJSON("keys not unlocked")
+	}
 	var items []EventDTO
 	if err := json.Unmarshal([]byte(eventsJSON), &items); err != nil {
 		return errorJSON(fmt.Sprintf("decode events: %v", err))
@@ -374,6 +379,11 @@ func (c *Core) ImportEvents(eventsJSON string) string {
 			return errorJSON(fmt.Sprintf("convert event: %v", err))
 		}
 		events = append(events, event)
+	}
+	events = dedupeEvents(events)
+	sortEvents(events)
+	if err := c.applyImportedEvents(events); err != nil {
+		return errorJSON(fmt.Sprintf("apply events: %v", err))
 	}
 	if err := c.store.AppendEvents(events); err != nil {
 		return errorJSON(fmt.Sprintf("append events: %v", err))
@@ -639,6 +649,92 @@ func (c *Core) appendEvent(eventType string, task model.Task) error {
 		return fmt.Errorf("save sync state: %w", err)
 	}
 	return nil
+}
+
+func (c *Core) applyImportedEvents(events []model.Event) error {
+	for _, event := range events {
+		exists, err := c.store.HasEvent(event.ID)
+		if err != nil {
+			return fmt.Errorf("check event: %w", err)
+		}
+		if exists {
+			continue
+		}
+		plaintext, err := c.keys.Decrypt(event.Payload)
+		if err != nil {
+			return fmt.Errorf("decrypt event payload: %w", err)
+		}
+		event.Payload = plaintext
+		taskID := taskIDFromPayload(event.Payload)
+		if taskID == "" {
+			return fmt.Errorf("missing task id in payload")
+		}
+		task, err := c.store.GetTask(taskID)
+		if err != nil {
+			return fmt.Errorf("get task: %w", err)
+		}
+		updated, changed, conflict, err := sync.ApplyEvent(task, event)
+		if err != nil {
+			return fmt.Errorf("apply event: %w", err)
+		}
+		if changed {
+			if err := c.store.UpsertTask(updated); err != nil {
+				return fmt.Errorf("upsert task: %w", err)
+			}
+			continue
+		}
+		if conflict {
+			conflictRecord := model.Conflict{
+				ID:             uuid.NewString(),
+				TaskID:         task.ID,
+				LocalUpdatedAt: task.UpdatedAt,
+				RemoteEventID:  event.ID,
+				RemoteTS:       event.TS,
+				DetectedAt:     time.Now().UTC(),
+				Resolution:     "lww_local",
+			}
+			if err := c.store.AddConflict(conflictRecord); err != nil {
+				return fmt.Errorf("add conflict: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func taskIDFromPayload(payload []byte) string {
+	var dto TaskDTO
+	_ = json.Unmarshal(payload, &dto)
+	return dto.ID
+}
+
+func dedupeEvents(events []model.Event) []model.Event {
+	seen := make(map[string]struct{}, len(events))
+	out := make([]model.Event, 0, len(events))
+	for _, event := range events {
+		if event.ID == "" {
+			continue
+		}
+		if _, ok := seen[event.ID]; ok {
+			continue
+		}
+		seen[event.ID] = struct{}{}
+		out = append(out, event)
+	}
+	return out
+}
+
+func sortEvents(events []model.Event) {
+	sort.SliceStable(events, func(i, j int) bool {
+		a := events[i]
+		b := events[j]
+		if a.DeviceID != b.DeviceID {
+			return a.DeviceID < b.DeviceID
+		}
+		if a.Seq != b.Seq {
+			return a.Seq < b.Seq
+		}
+		return a.TS.Before(b.TS)
+	})
 }
 
 // DebugDecryptEvent is a local-only helper to decrypt an event payload.

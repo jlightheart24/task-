@@ -14,9 +14,13 @@ type Storage interface {
 
 	AppendEvents(events []model.Event) error
 	ListEventsSince(seq int64) ([]model.Event, error)
+	HasEvent(id string) (bool, error)
 	GetSyncState() (model.SyncState, error)
 	SaveSyncState(state model.SyncState) error
 
 	GetKeyState() (model.KeyState, error)
 	SaveKeyState(state model.KeyState) error
+
+	AddConflict(conflict model.Conflict) error
+	ListConflicts() ([]model.Conflict, error)
 }

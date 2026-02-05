@@ -182,6 +182,35 @@ func TestMigrationFromPlaintextTasks(t *testing.T) {
 	}
 }
 
+func TestConflictsRoundTrip(t *testing.T) {
+	store := newTestStore(t)
+	defer store.Close()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	conflict := model.Conflict{
+		ID:             "c1",
+		TaskID:         "t1",
+		LocalUpdatedAt: now,
+		RemoteEventID:  "e1",
+		RemoteTS:       now.Add(-time.Minute),
+		DetectedAt:     now,
+		Resolution:     "lww_local",
+	}
+	if err := store.AddConflict(conflict); err != nil {
+		t.Fatalf("add conflict: %v", err)
+	}
+	conflicts, err := store.ListConflicts()
+	if err != nil {
+		t.Fatalf("list conflicts: %v", err)
+	}
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].TaskID != "t1" {
+		t.Fatalf("unexpected conflict task id: %s", conflicts[0].TaskID)
+	}
+}
+
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "core.db")
