@@ -50,3 +50,16 @@
 - You asked to center the month header; I centered the month/year label above the calendar.
 - You asked to move the month header below the view tabs and left align it; I repositioned it under the Week/Month buttons.
 - You asked to place the month header below the nav controls and center it; I moved and centered the month/year label.
+- You asked for a project-wide review in this order: Backend, Frontend UX, Calendar/Details, Testing/CI, Security/E2EE. Summary:
+  - Backend: validate priority/due_date, consider explicit columns for query/indexing, clarify order semantics.
+  - Frontend UX: modal ESC/focus trap, clearer click affordance, potential inline edits.
+  - Calendar/Details: weekday headers, today highlight, overflow handling, drag between days, due-date default setting.
+  - Testing/CI: add tests for calendar settings, backend validation, add CI workflow.
+  - Security/E2EE: implement encryption, key management, sync flow/conflict handling.
+- You asked for a roadmap to keep desktop + add iOS; summary:
+  - Phase 0: align data model, sync/conflict spec, encryption scheme, choose iOS stack.
+  - Phase 1: iOS MVP (local-only CRUD, offline-first, key management).
+  - Phase 2: implement encryption + sync on both clients; add sync server/auth.
+  - Phase 3: UX parity/polish across desktop+iOS.
+  - Phase 4: hardening + release (backup/restore, security review, App Store prep).
+  - Immediate next steps: choose iOS stack, lock data model/sync spec, implement encryption on desktop.
