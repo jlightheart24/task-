@@ -750,11 +750,20 @@ export function App() {
                     : `${formatWeekdayShort(date)} ${date.getDate()}`}
                 </div>
                 {dayTasks.length === 0 ? null : (
-                  <ul>
+                  <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
                     {dayTasks
                       .sort((a, b) => getTaskSortValue(a) - getTaskSortValue(b))
                       .map((task) => (
-                        <li key={task.id} style={{ marginBottom: "4px" }}>
+                        <li
+                          key={task.id}
+                          style={{ marginBottom: "4px", display: "flex", alignItems: "flex-start" }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{ marginRight: "6px", lineHeight: "1.2", paddingTop: "2px" }}
+                          >
+                            •
+                          </span>
                           <button
                             type="button"
                             onClick={() => setActiveTaskId(task.id)}
@@ -765,6 +774,7 @@ export function App() {
                               cursor: "pointer",
                               textAlign: "left",
                               font: "inherit",
+                              display: "inline",
                               textDecoration: task.status === "done" ? "line-through" : "none",
                             }}
                           >
