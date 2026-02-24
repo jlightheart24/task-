@@ -43,10 +43,6 @@ export function App() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<"above" | "below" | null>(null);
-  const [dragOverGroup, setDragOverGroup] = useState<{
-    dueKey: string;
-    position: "above" | "below";
-  } | null>(null);
   const dragUserSelectRef = useRef<string>("");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [detailsDraft, setDetailsDraft] = useState<string>("");
@@ -560,19 +556,6 @@ export function App() {
         .task-item.drag-over-below::after {
           bottom: -4px;
         }
-        .group-drop {
-          position: relative;
-          height: 10px;
-          margin: 4px 0;
-        }
-        .group-drop.active::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 4px;
-          border-top: 2px solid #666;
-        }
         .modal-backdrop {
           position: fixed;
           inset: 0;
@@ -829,82 +812,37 @@ export function App() {
         style={{ cursor: "text", padding: "8px 0" }}
       >
         <ul>
-        {sortedDueDateKeys.map((dueKey, dueIndex) => {
-          const prevDueKey = dueIndex > 0 ? sortedDueDateKeys[dueIndex - 1] : "";
+        {sortedDueDateKeys.map((dueKey) => {
           const currentGroup = tasksByDueDate[dueKey];
           const sortedGroup = [...currentGroup].sort(
             (a, b) => getTaskSortValue(a) - getTaskSortValue(b)
           );
-          const firstTaskId = sortedGroup[0]?.id;
 
           return (
-          <li key={dueKey} style={{ listStyle: "none", marginBottom: "12px" }}>
-            {dueIndex > 0 ? (
-              <div
-                className={`group-drop${
-                  dragOverGroup?.dueKey === dueKey && dragOverGroup.position === "above"
-                    ? " active"
-                    : ""
-                }`}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = "move";
-                  setDragOverGroup({ dueKey, position: "above" });
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const dragState = dragStateRef.current;
-                  if (!dragState) {
-                    return;
-                  }
-                  const targetDueKey = prevDueKey || dueKey;
-                  if (firstTaskId) {
-                    moveTaskToDueDate(dragState.taskId, targetDueKey, firstTaskId, "above");
-                  } else {
-                    moveTaskToDueDate(dragState.taskId, targetDueKey);
-                  }
-                  dragStateRef.current = null;
-                  setDraggingId(null);
-                  setDragOverId(null);
-                  setDragOverPosition(null);
-                  setDragOverGroup(null);
-                }}
-              />
-            ) : null}
+          <li
+            key={dueKey}
+            style={{ listStyle: "none", paddingBottom: "12px" }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const dragState = dragStateRef.current;
+              if (!dragState) {
+                return;
+              }
+              moveTaskToDueDate(dragState.taskId, dueKey);
+              dragStateRef.current = null;
+              setDraggingId(null);
+              setDragOverId(null);
+              setDragOverPosition(null);
+            }}
+          >
             <div style={{ fontWeight: 600, marginBottom: "6px" }}>
               {formatDateKey(dueKey === "no-due" ? "" : dueKey)}
             </div>
-            <div
-              className={`group-drop${
-                dragOverGroup?.dueKey === dueKey && dragOverGroup.position === "below"
-                  ? " active"
-                  : ""
-              }`}
-              onDragOver={(event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                setDragOverGroup({ dueKey, position: "below" });
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const dragState = dragStateRef.current;
-                if (!dragState) {
-                  return;
-                }
-                if (firstTaskId) {
-                  moveTaskToDueDate(dragState.taskId, dueKey, firstTaskId, "above");
-                } else {
-                  moveTaskToDueDate(dragState.taskId, dueKey);
-                }
-                dragStateRef.current = null;
-                setDraggingId(null);
-                setDragOverId(null);
-                setDragOverPosition(null);
-                setDragOverGroup(null);
-              }}
-            />
             <ul
               onDragOver={(event) => {
                 event.preventDefault();
@@ -922,7 +860,6 @@ export function App() {
                 setDraggingId(null);
                 setDragOverId(null);
                 setDragOverPosition(null);
-                setDragOverGroup(null);
               }}
             >
               {sortedGroup.map((task) => (
@@ -943,7 +880,6 @@ export function App() {
                     setDraggingId(null);
                     setDragOverId(null);
                     setDragOverPosition(null);
-                    setDragOverGroup(null);
                     document.body.style.userSelect = dragUserSelectRef.current;
                   }}
                   onDragEnter={(event) => {
@@ -975,7 +911,6 @@ export function App() {
                     setDraggingId(null);
                     setDragOverId(null);
                     setDragOverPosition(null);
-                    setDragOverGroup(null);
                   }}
                 >
                   <div
