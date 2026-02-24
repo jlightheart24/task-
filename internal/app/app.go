@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	appcrypto "taskpp/internal/crypto"
@@ -206,7 +207,7 @@ func (a *App) UpdateTaskOrder(id string, order int64) (domain.Task, error) {
 }
 
 // UpdateTaskDetails updates description, due date, and priority.
-func (a *App) UpdateTaskDetails(id string, description string, dueDate string, priority string) (domain.Task, error) {
+func (a *App) UpdateTaskDetails(id string, title string, description string, dueDate string, priority string) (domain.Task, error) {
 	ctx := context.Background()
 	task, err := a.loadTask(ctx, id)
 	if err != nil {
@@ -218,6 +219,10 @@ func (a *App) UpdateTaskDetails(id string, description string, dueDate string, p
 		return domain.Task{}, err
 	}
 
+	trimmedTitle := strings.TrimSpace(title)
+	if trimmedTitle != "" {
+		task.Title = trimmedTitle
+	}
 	task.Description = description
 	task.DueDate = parsedDueDate
 	task.Priority = priority

@@ -15,6 +15,7 @@ export function App() {
   const [message, setMessage] = useState<string>("backend not connected");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draft, setDraft] = useState<string>("");
+  const [createDueDate, setCreateDueDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"tasks" | "settings" | "calendar">("tasks");
   const [dateHeaderMode, setDateHeaderMode] = useState<"date" | "weekday" | "both">(() => {
     const stored = window.localStorage.getItem("taskpp.dateHeaderMode");
@@ -51,6 +52,9 @@ export function App() {
   const [detailsDraft, setDetailsDraft] = useState<string>("");
   const [priorityDraft, setPriorityDraft] = useState<string>("normal");
   const [dueDateDraft, setDueDateDraft] = useState<string>("");
+  const [titleDraft, setTitleDraft] = useState<string>("");
+  const [editingTitle, setEditingTitle] = useState<boolean>(false);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [calendarView, setCalendarView] = useState<"week" | "month">("week");
   const [monthOffset, setMonthOffset] = useState<number>(0);
@@ -91,10 +95,11 @@ export function App() {
     if (typeof create !== "function" || trimmed === "") {
       return;
     }
-    create(trimmed, "")
+    create(trimmed, createDueDate)
       .then((task: Task) => {
         setTasks((prev) => [...prev, task]);
         setDraft("");
+        setCreateDueDate("");
         if (editorRef.current) {
           editorRef.current.innerText = "";
           editorRef.current.focus();
@@ -131,6 +136,19 @@ export function App() {
   }, [dateFormat]);
 
   useEffect(() => {
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (createDueDate !== "") {
+        setCreateDueDate("");
+      }
+      return;
+    }
+    if (createDueDate === "") {
+      setCreateDueDate(dateToKeyLocal(new Date()));
+    }
+  }, [draft, createDueDate]);
+
+  useEffect(() => {
     const task = tasks.find((item) => item.id === activeTaskId);
     if (!task) {
       return;
@@ -138,6 +156,8 @@ export function App() {
     setDetailsDraft(task.description || "");
     setPriorityDraft(task.priority || "normal");
     setDueDateDraft(formatInputDate(task.due_date));
+    setTitleDraft(task.title || "");
+    setEditingTitle(false);
   }, [activeTaskId, tasks]);
 
   const toggleTask = (id: string) => {
@@ -192,13 +212,19 @@ export function App() {
     update(id, order).catch(() => setMessage("backend error"));
   };
 
-  const updateTaskDetails = (id: string, description: string, dueDate: string, priority: string) => {
+  const updateTaskDetails = (
+    id: string,
+    title: string,
+    description: string,
+    dueDate: string,
+    priority: string
+  ) => {
     const wails = (window as unknown as { go?: any }).go;
     const update = wails?.app?.App?.UpdateTaskDetails;
     if (typeof update !== "function") {
       return;
     }
-    update(id, description, dueDate, priority)
+    update(id, title, description, dueDate, priority)
       .then((updated: Task) => {
         setTasks((prev) =>
           prev.map((task) => (task.id === updated.id ? updated : task))
@@ -255,8 +281,15 @@ export function App() {
   };
 
   const formatInputDate = (value?: string) => {
-    return extractDateKey(value);
+      return extractDateKey(value);
   };
+
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingTitle]);
 
   const toDateKey = (value?: string) => {
     return extractDateKey(value);
@@ -1029,6 +1062,17 @@ export function App() {
             }}
           />
         </div>
+        {draft.trim() === "" ? null : (
+          <div style={{ marginTop: "8px" }}>
+            <input
+              type="date"
+              aria-label="Due date"
+              value={createDueDate}
+              onChange={(event) => setCreateDueDate(event.target.value)}
+              style={{ display: "block" }}
+            />
+          </div>
+        )}
       </div>
       ) : null}
       {activeTaskId ? (
@@ -1037,6 +1081,34 @@ export function App() {
             <div style={{ fontWeight: 600, marginBottom: "8px" }}>
               Task details
             </div>
+            {editingTitle ? (
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={titleDraft}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onBlur={() => setEditingTitle(false)}
+                style={{ width: "100%", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingTitle(true)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  marginBottom: "8px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  font: "inherit",
+                  fontSize: "18px",
+                  fontWeight: 600,
+                }}
+              >
+                {titleDraft || "Untitled task"}
+              </button>
+            )}
             <label style={{ display: "block", marginBottom: "8px" }}>
               Details
               <textarea
@@ -1080,7 +1152,7 @@ export function App() {
                   if (!activeTaskId) {
                     return;
                   }
-                  updateTaskDetails(activeTaskId, detailsDraft, dueDateDraft, priorityDraft);
+                  updateTaskDetails(activeTaskId, titleDraft, detailsDraft, dueDateDraft, priorityDraft);
                   setActiveTaskId(null);
                 }}
               >
