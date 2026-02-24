@@ -11,6 +11,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 	if app.Env() != "dev" {
 		t.Fatalf("expected env to be dev, got %q", app.Env())
 	}
@@ -22,6 +23,7 @@ func TestGreet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 	msg := app.Greet("jonny")
 	if msg != "hello jonny from dev" {
 		t.Fatalf("unexpected greet message: %q", msg)
@@ -34,6 +36,7 @@ func TestCreateAndListTasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 
 	task, err := app.CreateTask("first", "")
 	if err != nil {
@@ -64,6 +67,7 @@ func TestToggleTaskComplete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 
 	task, err := app.CreateTask("toggle me", "")
 	if err != nil {
@@ -99,6 +103,7 @@ func TestDeleteTask(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 
 	task, err := app.CreateTask("delete me", "")
 	if err != nil {
@@ -124,6 +129,7 @@ func TestUpdateTaskOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 
 	task, err := app.CreateTask("order me", "")
 	if err != nil {
@@ -145,6 +151,7 @@ func TestUpdateTaskDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new app: %v", err)
 	}
+	t.Cleanup(func() { _ = app.Close() })
 
 	task, err := app.CreateTask("details", "")
 	if err != nil {

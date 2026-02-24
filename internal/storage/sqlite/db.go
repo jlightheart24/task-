@@ -76,6 +76,34 @@ func (db *DB) Migrate(ctx context.Context) error {
 	return nil
 }
 
+// GetSetting returns the setting value and whether it exists.
+func (db *DB) GetSetting(ctx context.Context, key string) (string, bool, error) {
+	var value string
+	err := db.conn.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("get setting: %w", err)
+	}
+	return value, true, nil
+}
+
+// SetSetting upserts a setting value.
+func (db *DB) SetSetting(ctx context.Context, key, value string) error {
+	_, err := db.conn.ExecContext(
+		ctx,
+		`INSERT INTO settings (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		key,
+		value,
+	)
+	if err != nil {
+		return fmt.Errorf("set setting: %w", err)
+	}
+	return nil
+}
+
 // Conn exposes the underlying sql.DB.
 func (db *DB) Conn() *sql.DB {
 	return db.conn

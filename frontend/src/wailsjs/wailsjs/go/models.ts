@@ -3,18 +3,18 @@ export namespace domain {
 	export class Task {
 	    id: string;
 	    title: string;
-	    description: string;
+	    description?: string;
 	    status: string;
-	    priority: string;
+	    priority?: string;
 	    // Go type: time
-	    due_date: any;
+	    due_date?: any;
 	    order: number;
 	    // Go type: time
 	    created_at: any;
 	    // Go type: time
 	    updated_at: any;
 	    // Go type: time
-	    completed_at: any;
+	    completed_at?: any;
 	    archived: boolean;
 	
 	    static createFrom(source: any = {}) {

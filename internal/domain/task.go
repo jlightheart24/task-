@@ -7,14 +7,14 @@ import "time"
 type Task struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
-	Description string    `json:"description"`
+	Description string    `json:"description,omitempty"`
 	Status      string    `json:"status"`
-	Priority    string    `json:"priority"`
-	DueDate     time.Time `json:"due_date"`
+	Priority    string    `json:"priority,omitempty"`
+	DueDate     time.Time `json:"due_date,omitempty"`
 	Order       int64     `json:"order"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	CompletedAt time.Time `json:"completed_at"`
+	CompletedAt time.Time `json:"completed_at,omitempty"`
 	Archived    bool      `json:"archived"`
 }
 
