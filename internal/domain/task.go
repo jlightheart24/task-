@@ -7,6 +7,7 @@ import "time"
 type Task struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
+	ShortTitle  string    `json:"short_title,omitempty"`
 	Description string    `json:"description,omitempty"`
 	Status      string    `json:"status"`
 	Priority    string    `json:"priority,omitempty"`

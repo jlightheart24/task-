@@ -3,6 +3,7 @@ export namespace domain {
 	export class Task {
 	    id: string;
 	    title: string;
+	    short_title?: string;
 	    description?: string;
 	    status: string;
 	    priority?: string;
@@ -25,6 +26,7 @@ export namespace domain {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.title = source["title"];
+	        this.short_title = source["short_title"];
 	        this.description = source["description"];
 	        this.status = source["status"];
 	        this.priority = source["priority"];

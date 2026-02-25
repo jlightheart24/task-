@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 type Task = {
   id: string;
   title: string;
+  short_title?: string;
   description?: string;
   status: string;
   priority?: string;
@@ -38,17 +39,49 @@ export function App() {
     }
     return "mdy";
   });
+  const [calendarShortenEnabled, setCalendarShortenEnabled] = useState<boolean>(() => {
+    const stored = window.localStorage.getItem("taskpp.calendarShortenEnabled");
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+    return false;
+  });
+  const [calendarCustomShortEnabled, setCalendarCustomShortEnabled] = useState<boolean>(() => {
+    const stored = window.localStorage.getItem("taskpp.calendarCustomShortEnabled");
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+    return false;
+  });
+  const [calendarShortenWhenCustom, setCalendarShortenWhenCustom] = useState<boolean>(() => {
+    const stored = window.localStorage.getItem("taskpp.calendarShortenWhenCustom");
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+    return true;
+  });
   const editorRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ taskId: string; dueKey: string } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<"above" | "below" | null>(null);
   const dragUserSelectRef = useRef<string>("");
+  const pendingDueDatesRef = useRef<Map<string, string>>(new Map());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [detailsDraft, setDetailsDraft] = useState<string>("");
   const [priorityDraft, setPriorityDraft] = useState<string>("normal");
   const [dueDateDraft, setDueDateDraft] = useState<string>("");
   const [titleDraft, setTitleDraft] = useState<string>("");
+  const [shortTitleDraft, setShortTitleDraft] = useState<string>("");
   const [editingTitle, setEditingTitle] = useState<boolean>(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
   const [weekOffset, setWeekOffset] = useState<number>(0);
@@ -132,6 +165,24 @@ export function App() {
   }, [dateFormat]);
 
   useEffect(() => {
+    window.localStorage.setItem("taskpp.calendarShortenEnabled", String(calendarShortenEnabled));
+  }, [calendarShortenEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem("taskpp.calendarCustomShortEnabled", String(calendarCustomShortEnabled));
+  }, [calendarCustomShortEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem("taskpp.calendarShortenWhenCustom", String(calendarShortenWhenCustom));
+  }, [calendarShortenWhenCustom]);
+
+  useEffect(() => {
+    if (calendarCustomShortEnabled && !calendarShortenWhenCustom) {
+      setCalendarShortenWhenCustom(true);
+    }
+  }, [calendarCustomShortEnabled, calendarShortenWhenCustom]);
+
+  useEffect(() => {
     const trimmed = draft.trim();
     if (trimmed === "") {
       if (createDueDate !== "") {
@@ -153,6 +204,7 @@ export function App() {
     setPriorityDraft(task.priority || "normal");
     setDueDateDraft(formatInputDate(task.due_date));
     setTitleDraft(task.title || "");
+    setShortTitleDraft(task.short_title || "");
     setEditingTitle(false);
   }, [activeTaskId, tasks]);
 
@@ -164,8 +216,10 @@ export function App() {
     }
     toggle(id)
       .then((updated: Task) => {
+        const pendingDue = pendingDueDatesRef.current.get(updated.id);
+        const merged = pendingDue ? { ...updated, due_date: pendingDue } : updated;
         setTasks((prev) =>
-          prev.map((task) => (task.id === updated.id ? updated : task))
+          prev.map((task) => (task.id === updated.id ? merged : task))
         );
       })
       .catch(() => setMessage("backend error"));
@@ -190,13 +244,18 @@ export function App() {
     if (typeof update !== "function") {
       return;
     }
+    pendingDueDatesRef.current.set(id, dueDate);
     update(id, dueDate)
       .then((updated: Task) => {
+        pendingDueDatesRef.current.delete(id);
         setTasks((prev) =>
           prev.map((task) => (task.id === updated.id ? updated : task))
         );
       })
-      .catch(() => setMessage("backend error"));
+      .catch(() => {
+        pendingDueDatesRef.current.delete(id);
+        setMessage("backend error");
+      });
   };
 
   const updateTaskOrder = (id: string, order: number) => {
@@ -211,6 +270,7 @@ export function App() {
   const updateTaskDetails = (
     id: string,
     title: string,
+    shortTitle: string,
     description: string,
     dueDate: string,
     priority: string
@@ -220,7 +280,7 @@ export function App() {
     if (typeof update !== "function") {
       return;
     }
-    update(id, title, description, dueDate, priority)
+    update(id, title, shortTitle, description, dueDate, priority)
       .then((updated: Task) => {
         setTasks((prev) =>
           prev.map((task) => (task.id === updated.id ? updated : task))
@@ -317,6 +377,22 @@ export function App() {
     const day = String(date.getDate());
     const monthName = date.toLocaleDateString(undefined, { month: "short" });
     return dateFormat === "dmy" ? `${day} ${monthName}` : `${monthName} ${day}`;
+  };
+
+  const formatCalendarTaskTitle = (task: Task) => {
+    const baseTitle =
+      calendarCustomShortEnabled && task.short_title?.trim()
+        ? task.short_title.trim()
+        : task.title;
+    const shouldShorten =
+      calendarShortenEnabled || (calendarCustomShortEnabled && calendarShortenWhenCustom);
+    if (!shouldShorten) {
+      return baseTitle;
+    }
+    if (baseTitle.length <= 24) {
+      return baseTitle;
+    }
+    return baseTitle.slice(0, 24);
   };
 
   const dateToKeyLocal = (date: Date) => {
@@ -683,11 +759,45 @@ export function App() {
             />
             <span style={{ marginLeft: "6px" }}>Day/Month/Year</span>
           </label>
+          <div style={{ marginTop: "16px", marginBottom: "8px", fontWeight: 600 }}>
+            Calendar Task Labels
+          </div>
+          <label style={{ display: "block", marginBottom: "6px" }}>
+            <input
+              type="checkbox"
+              checked={calendarShortenEnabled}
+              onChange={(event) => setCalendarShortenEnabled(event.target.checked)}
+            />
+            <span style={{ marginLeft: "6px" }}>
+              Shorten calendar task names to 24 characters
+            </span>
+          </label>
+          <label style={{ display: "block", marginBottom: "6px" }}>
+            <input
+              type="checkbox"
+              checked={calendarCustomShortEnabled}
+              onChange={(event) => setCalendarCustomShortEnabled(event.target.checked)}
+            />
+            <span style={{ marginLeft: "6px" }}>
+              Allow custom short names for calendar
+            </span>
+          </label>
+          <label style={{ display: "block" }}>
+            <input
+              type="checkbox"
+              checked={calendarShortenWhenCustom}
+              disabled={calendarCustomShortEnabled}
+              onChange={(event) => setCalendarShortenWhenCustom(event.target.checked)}
+            />
+            <span style={{ marginLeft: "6px", color: calendarCustomShortEnabled ? "#777" : "inherit" }}>
+              Auto-shorten when a custom short name is set
+            </span>
+          </label>
         </div>
       ) : null}
       {activeTab === "calendar" ? (
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
             <button
               type="button"
               onClick={() => setCalendarView("week")}
@@ -742,6 +852,11 @@ export function App() {
               {monthBase.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
             </div>
           ) : null}
+          {calendarView === "week" ? (
+            <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+              {formatMonthDay(weekDates[0])} - {formatMonthDay(weekDates[6])}
+            </div>
+          ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "8px" }}>
           {(calendarView === "week" ? weekDates : monthGridDates).map((date) => {
             const dateKey = dateToKeyLocal(date);
@@ -762,7 +877,7 @@ export function App() {
               >
                 <div style={{ fontWeight: 600, marginBottom: "6px" }}>
                   {calendarView === "week"
-                    ? `${formatWeekdayShort(date)} ${formatMonthDay(date)}`
+                    ? `${date.getDate()}`
                     : `${formatWeekdayShort(date)} ${date.getDate()}`}
                 </div>
                 {dayTasks.length === 0 ? null : (
@@ -794,7 +909,7 @@ export function App() {
                               textDecoration: task.status === "done" ? "line-through" : "none",
                             }}
                           >
-                            {task.title}
+                            {formatCalendarTaskTitle(task)}
                           </button>
                         </li>
                       ))}
@@ -1013,9 +1128,6 @@ export function App() {
       {activeTaskId ? (
         <div className="modal-backdrop" onClick={() => setActiveTaskId(null)}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <div style={{ fontWeight: 600, marginBottom: "8px" }}>
-              Task details
-            </div>
             {editingTitle ? (
               <input
                 ref={titleInputRef}
@@ -1053,6 +1165,17 @@ export function App() {
                 style={{ width: "100%", marginTop: "6px" }}
               />
             </label>
+            {calendarCustomShortEnabled ? (
+              <label style={{ display: "block", marginBottom: "8px" }}>
+                Short name (calendar)
+                <input
+                  type="text"
+                  value={shortTitleDraft}
+                  onChange={(event) => setShortTitleDraft(event.target.value)}
+                  style={{ width: "100%", marginTop: "6px" }}
+                />
+              </label>
+            ) : null}
             <label style={{ display: "block", marginBottom: "8px" }}>
               Due date
               <input
@@ -1087,7 +1210,14 @@ export function App() {
                   if (!activeTaskId) {
                     return;
                   }
-                  updateTaskDetails(activeTaskId, titleDraft, detailsDraft, dueDateDraft, priorityDraft);
+                  updateTaskDetails(
+                    activeTaskId,
+                    titleDraft,
+                    shortTitleDraft,
+                    detailsDraft,
+                    dueDateDraft,
+                    priorityDraft
+                  );
                   setActiveTaskId(null);
                 }}
               >

@@ -207,7 +207,7 @@ func (a *App) UpdateTaskOrder(id string, order int64) (domain.Task, error) {
 }
 
 // UpdateTaskDetails updates description, due date, and priority.
-func (a *App) UpdateTaskDetails(id string, title string, description string, dueDate string, priority string) (domain.Task, error) {
+func (a *App) UpdateTaskDetails(id string, title string, shortTitle string, description string, dueDate string, priority string) (domain.Task, error) {
 	ctx := context.Background()
 	task, err := a.loadTask(ctx, id)
 	if err != nil {
@@ -223,6 +223,7 @@ func (a *App) UpdateTaskDetails(id string, title string, description string, due
 	if trimmedTitle != "" {
 		task.Title = trimmedTitle
 	}
+	task.ShortTitle = strings.TrimSpace(shortTitle)
 	task.Description = description
 	task.DueDate = parsedDueDate
 	task.Priority = priority

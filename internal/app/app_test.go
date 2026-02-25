@@ -158,7 +158,7 @@ func TestUpdateTaskDetails(t *testing.T) {
 		t.Fatalf("create task: %v", err)
 	}
 
-	updated, err := app.UpdateTaskDetails(task.ID, "notes", "2026-02-10", "high")
+	updated, err := app.UpdateTaskDetails(task.ID, "details", "short", "notes", "2026-02-10", "high")
 	if err != nil {
 		t.Fatalf("update task details: %v", err)
 	}
