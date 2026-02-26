@@ -1,1 +1,13 @@
-# Agent Instructions\r\n\r\n## macOS Deployment Notes (Important)\r\n- macOS builds must be done on macOS. Wails cannot build mac targets on Windows.\r\n- If deploying to real users, plan for codesigning + notarization (Apple Developer account required).\r\n- For quick testing, unsigned builds are possible but Gatekeeper warnings will appear.\r\n- Decide whether to build for Apple Silicon (arm64), Intel (amd64), or universal (both).\r\n- Packaging is typically a .dmg (or .pkg).\r\n\r\n## Recommended Decision Checklist\r\n1. Build location: local Mac or CI (GitHub Actions macOS runner).\r\n2. Signing: unsigned (dev only) vs signed + notarized (production).\r\n3. Architecture: arm64, amd64, or universal.\r\n
+# Agent Instructions
+
+## macOS Deployment Notes (Important)
+- macOS builds must be done on macOS. Wails cannot build mac targets on Windows.
+- If deploying to real users, plan for codesigning + notarization (Apple Developer account required).
+- For quick testing, unsigned builds are possible but Gatekeeper warnings will appear.
+- Decide whether to build for Apple Silicon (arm64), Intel (amd64), or universal (both).
+- Packaging is typically a .dmg (or .pkg).
+
+## Recommended Decision Checklist
+1. Build location: local Mac or CI (GitHub Actions macOS runner).
+2. Signing: unsigned (dev only) vs signed + notarized (production).
+3. Architecture: arm64, amd64, or universal.
