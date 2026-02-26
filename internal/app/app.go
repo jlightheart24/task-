@@ -80,15 +80,16 @@ func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 	if parsedDueDate.IsZero() {
 		parsedDueDate = todayDueDate()
 	}
+	dueDateValue := formatTime(parsedDueDate)
 	task := domain.Task{
 		ID:          uuid.NewString(),
 		Title:       title,
 		Description: "",
 		Status:      "open",
-		DueDate:     parsedDueDate,
+		DueDate:     dueDateValue,
 		Order:       now.UnixNano(),
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		CreatedAt:   formatTime(now),
+		UpdatedAt:   formatTime(now),
 	}
 
 	payload, err := json.Marshal(task)
@@ -107,8 +108,8 @@ func (a *App) CreateTask(title string, dueDate string) (domain.Task, error) {
 		 VALUES (?, ?, ?, ?, NULL, ?)`,
 		task.ID,
 		encrypted,
-		task.CreatedAt.Unix(),
-		task.UpdatedAt.Unix(),
+		now.Unix(),
+		now.Unix(),
 		1,
 	)
 	if err != nil {
@@ -161,12 +162,12 @@ func (a *App) ToggleTaskComplete(id string) (domain.Task, error) {
 	now := time.Now().UTC()
 	if task.Status == "done" {
 		task.Status = "open"
-		task.CompletedAt = time.Time{}
+		task.CompletedAt = ""
 	} else {
 		task.Status = "done"
-		task.CompletedAt = now
+		task.CompletedAt = formatTime(now)
 	}
-	task.UpdatedAt = now
+	task.UpdatedAt = formatTime(now)
 
 	if err := a.saveTask(ctx, task); err != nil {
 		return domain.Task{}, err
@@ -197,7 +198,8 @@ func (a *App) UpdateTaskOrder(id string, order int64) (domain.Task, error) {
 	}
 
 	task.Order = order
-	task.UpdatedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	task.UpdatedAt = formatTime(now)
 
 	if err := a.saveTask(ctx, task); err != nil {
 		return domain.Task{}, err
@@ -225,9 +227,10 @@ func (a *App) UpdateTaskDetails(id string, title string, shortTitle string, desc
 	}
 	task.ShortTitle = strings.TrimSpace(shortTitle)
 	task.Description = description
-	task.DueDate = parsedDueDate
+	task.DueDate = formatOptionalTime(parsedDueDate)
 	task.Priority = priority
-	task.UpdatedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	task.UpdatedAt = formatTime(now)
 
 	if err := a.saveTask(ctx, task); err != nil {
 		return domain.Task{}, err
@@ -249,8 +252,9 @@ func (a *App) UpdateTaskDueDate(id string, dueDate string) (domain.Task, error) 
 		return domain.Task{}, err
 	}
 
-	task.DueDate = parsedDueDate
-	task.UpdatedAt = time.Now().UTC()
+	task.DueDate = formatOptionalTime(parsedDueDate)
+	now := time.Now().UTC()
+	task.UpdatedAt = formatTime(now)
 
 	if err := a.saveTask(ctx, task); err != nil {
 		return domain.Task{}, err
@@ -338,6 +342,16 @@ func (a *App) loadTask(ctx context.Context, id string) (domain.Task, error) {
 }
 
 func (a *App) saveTask(ctx context.Context, task domain.Task) error {
+	if task.UpdatedAt == "" {
+		now := time.Now().UTC()
+		task.UpdatedAt = formatTime(now)
+	}
+	updatedAt, ok := parseTime(task.UpdatedAt)
+	if !ok {
+		now := time.Now().UTC()
+		task.UpdatedAt = formatTime(now)
+		updatedAt = now
+	}
 	payload, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("marshal task: %w", err)
@@ -350,7 +364,7 @@ func (a *App) saveTask(ctx context.Context, task domain.Task) error {
 		ctx,
 		`UPDATE tasks SET ciphertext = ?, updated_at = ? WHERE id = ?`,
 		encrypted,
-		task.UpdatedAt.Unix(),
+		updatedAt.Unix(),
 		task.ID,
 	)
 	if err != nil {
@@ -447,4 +461,28 @@ func todayDueDate() time.Time {
 	year, month, day := now.Date()
 	localMidnight := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
 	return localMidnight
+}
+
+func formatTime(value time.Time) string {
+	return value.Format(time.RFC3339)
+}
+
+func formatOptionalTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return formatTime(value)
+}
+
+func parseTime(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, value); err == nil {
+		return parsed, true
+	}
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return parsed, true
+	}
+	return time.Time{}, false
 }

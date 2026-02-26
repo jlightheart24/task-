@@ -81,7 +81,7 @@ func TestToggleTaskComplete(t *testing.T) {
 	if updated.Status != "done" {
 		t.Fatalf("expected status done, got %q", updated.Status)
 	}
-	if updated.CompletedAt.IsZero() {
+	if updated.CompletedAt == "" {
 		t.Fatalf("expected completed_at set")
 	}
 
@@ -92,7 +92,7 @@ func TestToggleTaskComplete(t *testing.T) {
 	if updated.Status != "open" {
 		t.Fatalf("expected status open, got %q", updated.Status)
 	}
-	if !updated.CompletedAt.IsZero() {
+	if updated.CompletedAt != "" {
 		t.Fatalf("expected completed_at cleared")
 	}
 }
@@ -168,7 +168,7 @@ func TestUpdateTaskDetails(t *testing.T) {
 	if updated.Priority != "high" {
 		t.Fatalf("expected priority high, got %q", updated.Priority)
 	}
-	if updated.DueDate.IsZero() {
+	if updated.DueDate == "" {
 		t.Fatalf("expected due date set")
 	}
 }

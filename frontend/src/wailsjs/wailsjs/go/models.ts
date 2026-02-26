@@ -7,15 +7,11 @@ export namespace domain {
 	    description?: string;
 	    status: string;
 	    priority?: string;
-	    // Go type: time
-	    due_date?: any;
+	    due_date?: string;
 	    order: number;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	    // Go type: time
-	    completed_at?: any;
+	    created_at: string;
+	    updated_at: string;
+	    completed_at?: string;
 	    archived: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -30,31 +26,13 @@ export namespace domain {
 	        this.description = source["description"];
 	        this.status = source["status"];
 	        this.priority = source["priority"];
-	        this.due_date = this.convertValues(source["due_date"], null);
+	        this.due_date = source["due_date"];
 	        this.order = source["order"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
-	        this.completed_at = this.convertValues(source["completed_at"], null);
+	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	        this.completed_at = source["completed_at"];
 	        this.archived = source["archived"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }
